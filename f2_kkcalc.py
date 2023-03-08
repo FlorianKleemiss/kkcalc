@@ -20,6 +20,8 @@ import math
 import numpy
 #import os
 from kkcalc import data
+import specclass
+import brennan
 
 
 def calc_relativistic_correction(stoichiometry):
@@ -261,8 +263,8 @@ if __name__ == '__main__':
     raw_file = data.load_data_with_I0("NaUF5.spec",load_options={'data_column': 4, 'I0_column': 10})
     splice_eV = numpy.array([raw_file[0,0], raw_file[-1,0]])  # data limits
     Full_E, Imaginary_Spectrum, NearEdgeData, splice_ind  = data.merge_spectra(raw_file, 
-                                                                               ASF_E2, 
-                                                                               ASF_Data1, 
+                                                                               ASF_E, 
+                                                                               ASF_Data, 
                                                                                merge_points=splice_eV, 
                                                                                add_background=False,
                                                                                fix_distortions=True,
@@ -272,40 +274,30 @@ if __name__ == '__main__':
     
     #import matplotlib
     #matplotlib.use('WXAgg')
+    print("Loading Brennan & Cowan Table")
+    br = brennan.brennan()
     import pylab
     
     pylab.figure()
-    #pylab.plot(Output[:,0],Output[:,1],'xg-',Output[:,0],Output[:,2],'xb-')
-    #pylab.plot(ASF_E2,ASF_Data2,':r')
+    br_e = numpy.linspace(NearEdgeData[0,0],NearEdgeData[-1,0],1000)
+    br_fp = numpy.zeros_like(br_e)
+    br_fdp = numpy.zeros_like(br_e)
+    for i,e in enumerate(br_e):
+        for Z,n in Stoichiometry:
+            fp, fdp = br.at_energy(e/1000, data.LIST_OF_ELEMENTS[Z-1])
+            br_fp[i] += n*fp
+            br_fdp[i] += n*fdp
+    
     pylab.plot(ASF_Data3[0],ASF_Data3[1],':r')
     pylab.plot(ASF_E2,Re_data,':b')
+    pylab.plot(br_e,br_fdp,'-r')
+    pylab.plot(br_e,br_fp,'-b')
 
     pylab.plot(NearEdgeData[:,0],NearEdgeData[:,1],'+c')
     pylab.plot(Full_E,KK_Real_Spectrum,'--g')
-    Es = [17100,
-17150,
-17160,
-17166,
-17180,
-17200,
-17220,
-17300]
-    fps = [-13.6595,
--16.2754,
--17.5141,
--19.1306,
--16.6550,
--12.8490,
--13.8983,
--11.7568]
-    fdps = [6.6971,
-      5.7636,
-      6.0041,
-      6.5918,
-      17.0275,
-      11.0402,
-      11.5513,
-      11.0343]
+    Es = [17100,17150,17160,17166,17180,17200,17220,17300]
+    fps = [-13.6595,-16.2754,-17.5141,-19.1306,-16.6550,-12.8490,-13.8983,-11.7568]
+    fdps = [6.6971, 5.7636, 6.0041, 6.5918, 17.0275, 11.0402, 11.5513, 11.0343]
     
     pylab.plot(Es,fps,'ok')
     pylab.plot(Es,fdps,'om')
