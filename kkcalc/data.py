@@ -21,7 +21,13 @@ CLASSICAL_ELECTRON_RADIUS = 2.81794029957951365441605230194258e-15  # meters
 PLANCKS_CONSTANT = 4.1356673310e-15  # eV*seconds
 SPEED_OF_LIGHT = 2.99792458e8  # meters per second
 AVOGADRO_CONSTANT = 6.02214129e23  # no unit
-LIST_OF_ELEMENTS = ['H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al','Si','P','S','Cl','Ar','K','Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr','Rb','Sr','Y','Zr','Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te','I','Xe','Cs','Ba','La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu','Hf','Ta','W','Re','Os','Ir','Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn','Fr','Ra','Ac','Th','Pa','U']
+LIST_OF_ELEMENTS = ['H','He',
+		    'Li','Be','B','C','N','O','F','Ne',
+			'Na','Mg','Al','Si','P','S','Cl','Ar',
+			'K','Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr',
+			'Rb','Sr','Y','Zr','Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te','I','Xe',
+			'Cs','Ba','La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu','Hf','Ta','W','Re','Os','Ir','Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn',
+			'Fr','Ra','Ac','Th','Pa','U']
 
 def load_Element_Database():
 	"""Loads atomic scattering factor database from a json file.
@@ -317,14 +323,6 @@ def export_data(filename, data, header_info=None,convert_to=None):
 	else:
 		logger.info("Nothing to save.")
 
-
-
-
-
-
-
-
-
 def convert_data(Data, FromType, ToType, Density=None, Formula_Mass=None):
 	"""Switchyard function for converting between data types.
 	
@@ -377,7 +375,7 @@ def calculate_asf(Stoichiometry):
 		total_E = numpy.unique(total_E)
 		# add weighted asf data sets for KK calculation
 		total_Im_coeffs = numpy.zeros((len(total_E)-1, 5))
-		counters = numpy.zeros((len(Stoichiometry)),dtype=numpy.int)
+		counters = numpy.zeros((len(Stoichiometry)),dtype=numpy.int64)
 		for i,E in enumerate(total_E[1:]):
 			sum_Im_coeffs = 0
 			for j in range(len(counters)):

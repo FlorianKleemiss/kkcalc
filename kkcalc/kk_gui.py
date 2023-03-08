@@ -131,12 +131,6 @@ class MyFrame(wx.Frame):
 			self.FixDistortionsCheckBox.Disable()
 			self.FixDistortionsCheckBox.SetToolTip(wx.ToolTip("Install the SciPy module to use this feature"))
 		DataBox.Add(self.FixDistortionsCheckBox, 0)
-		# Background_CloseSizer.Add(self.AddBackgroundCheckBox, 0)
-		# self.AddBackgroundCheckBox.Bind(wx.EVT_CHECKBOX, self.MergeAdd_check)
-		# Background_CloseSizer.AddStretchSpacer(1)
-		# self.CloseFile = wx.Button(self, -1, "X", style= wx.BU_EXACTFIT)
-		# Background_CloseSizer.Add(self.CloseFile, 0)
-		# DataBox.Add(Background_CloseSizer, 1, wx.GROW)
 
 		############################Material box
 		self.MaterialBox = wx.StaticBoxSizer(wx.StaticBox(self, label="Material"), wx.VERTICAL)
@@ -176,10 +170,8 @@ class MyFrame(wx.Frame):
 		self.PlotAxes = plot.PlotCanvas(self)
 
 		SizerR.Add(self.PlotAxes, 1, wx.GROW)
-		#SizerR.Add(self.Rplot, 1, wx.GROW)
 		# enable the zoom feature (drag a box around area of interest)
 		self.PlotAxes.enableZoom = True
-		#self.Rplot.SetEnableZoom(True)
 
 
 		Sizer1.Add(SizerL, 1, wx.GROW)
@@ -190,21 +182,16 @@ class MyFrame(wx.Frame):
 
 		self.Show(True)
 		self.plot_data()
-		#self.Test()
 
 	def Test(self):
 		"""Convenience function for repetitive testing"""
 		self.filename = "NC-Xy_norm_bgsub.txt"
 		self.dirname = "data"
 		self.FileText.SetLabel("File: "+self.filename)
-		#self.raw_file = self.LoadData(os.path.join(self.dirname, self.filename))
 		self.AddBackgroundCheckBox.SetValue(True)
 		self.combine_data()
 		self.PP_AlgorithmRadio.SetValue(True)
 		self.plot_data()
-
-
-
 
 	def OnAbout(self, e):
 		d = wx.MessageDialog(self, " A utility for calculating the real part of soft X-ray spectra written by Dr. Benjamin Watts at the Paul Scherrer Institute. If you make use of this utility, please consider citing the associated article:\n\nBenjamin Watts, ""Calculation of the Kramers-Kronig transform of X-ray spectra by a piecewise Laurent polynomial method,"" Opt. Express 22, 23628-23639 (2014)", "About KKcalc", wx.OK)
@@ -233,7 +220,6 @@ class MyFrame(wx.Frame):
 		logger.info("Opening web browser for help files.")
 		import webbrowser
 		webbrowser.open(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),"README.rst"))
-		#webbrowser.open("https://doi.org/10.1364/OE.22.023628")#README.rst")
 
 	def OnArticle(self, e):
 		logger.info("Opening web browser for article.")
@@ -284,71 +270,13 @@ class MyFrame(wx.Frame):
 
 		elif self.raw_file is not None and self.ASF_Data is not None:
 			
-			self.Full_E, self.Imaginary_Spectrum, self.NearEdgeData, self.splice_ind  = data.merge_spectra(self.NearEdgeData, self.ASF_E, self.ASF_Data, merge_points=splice_eV, add_background=self.AddBackgroundCheckBox.GetValue(), fix_distortions=self.FixDistortionsCheckBox.GetValue(), plotting_extras=True)
-
-			### get start and end Y values from nexafs and asf data
-			##splice_nexafs_Im = numpy.interp(splice_eV, raw_Im[:, 0], raw_Im[:, 1])
-			###splice_asf_Im = numpy.interp(splice_eV, self.total_asf[:, 0], self.total_asf[:, 2])
-			##splice_asf_Im = (data.coeffs_to_ASF(splice_eV[0],self.total_Im_coeffs[numpy.where(self.total_E<splice_eV[0])[0][-1]]),data.coeffs_to_ASF(splice_eV[1],self.total_Im_coeffs[numpy.where(self.total_E<splice_eV[1])[0][-1]]))
-			##cut_boolean = (splice_eV[0]<raw_Im[:, 0]) == (raw_Im[:, 0]<splice_eV[1])
-			### Merge Y values
-			##if not self.AddBackgroundCheckBox.GetValue():
-				##logger.info("Merge data sets")
-				##scale = (splice_asf_Im[1]-splice_asf_Im[0])/(splice_nexafs_Im[1]-splice_nexafs_Im[0])
-				##scaled_nexafs_Im = ((raw_Im[:, 1]-splice_nexafs_Im[0])*scale)+splice_asf_Im[0]
-				##self.asf_bg = None  # We won't be using this variable this time
-			##else:
-				##logger.info("Add data sets (this will currently only work at energies below 30 keV)")
-				### Set up background function
-				### We trust this point to be just before the absorption edge
-				##trusted_ind = max(0, numpy.where(self.total_asf[:, 0]>splice_eV[0])[0][0]-1)
-				##Log_total_asf = numpy.log(self.total_asf[:, 2])
-				### Lets trust the 5 points before our trusted point and make an initial guess at the background function
-				##p = numpy.polyfit(self.total_asf[(trusted_ind-5):trusted_ind, 0], Log_total_asf[(trusted_ind-5):trusted_ind], 1)
-				### Now lets look for the points up util the absorption edge
-				##p_vals = numpy.exp(numpy.polyval(p, self.total_asf[(trusted_ind-5):-1, 0]))
-				##p_err = max(p_vals[0:5]-self.total_asf[(trusted_ind-5):trusted_ind, 2])
-				##edge_ind = numpy.where(self.total_asf[trusted_ind:-1, 2]-p_vals[4:-1]>p_err*10)
-				##if len(edge_ind[0])!=0:
-					##edge_ind = edge_ind[0][0]
-				##else:
-					##edge_ind = trusted_ind
-				### Redo background using the 5 points before the background point
-				##p = numpy.polyfit(self.total_asf[(trusted_ind+edge_ind-5):trusted_ind+edge_ind, 0], Log_total_asf[(trusted_ind+edge_ind-5):trusted_ind+edge_ind], 1)
-				##asf_bg = numpy.exp(numpy.polyval(p, raw_Im[:, 0]))
-				##logger.info("Background defined as: y=exp(%(p1)ex %(p0)+e)" % {"p1":p[1], "p0":p[0]})
-				### Apply background function
-				##scale = (splice_asf_Im[1]-numpy.exp(numpy.polyval(p, splice_eV[1])))/splice_nexafs_Im[1]
-				##scaled_nexafs_Im = raw_Im[:, 1]*scale+asf_bg
-				### store background data for plotting
-				##cut_boolean_wide = numpy.roll(cut_boolean, -1) + numpy.roll(cut_boolean, 1)
-				##self.asf_bg = [[trusted_ind+edge_ind-5, trusted_ind+edge_ind], numpy.vstack((raw_Im[cut_boolean_wide, 0], asf_bg[cut_boolean_wide])).T]
-			
-			##nexafs_cut = numpy.vstack((raw_Im[cut_boolean, 0], scaled_nexafs_Im[cut_boolean])).T
-			####Merge point-wise data sets together
-			##asf_cut_high = self.total_asf[self.total_asf[:, 0]>splice_eV[1], :]
-			##asf_cut_low = self.total_asf[self.total_asf[:, 0]<splice_eV[0], :]
-			##self.merged_Im = numpy.vstack((asf_cut_low[:, [0, 2]], (splice_eV[0], splice_asf_Im[0]), nexafs_cut, (splice_eV[1], splice_asf_Im[1]), asf_cut_high[:, [0, 2]]))
-			
-			####Merge coeff data together
-			##coeffs_cut_high = self.total_Im_coeffs[self.total_E[:-1]>splice_eV[1],:]
-			##coeffs_cut_low = self.total_Im_coeffs[self.total_E[:-1]<splice_eV[0],:]
-			###convert points to coeffs
-			##nexafs_coeffs_cut = numpy.zeros((len(nexafs_cut)+1,5))
-			##Y = numpy.append(numpy.insert(nexafs_cut[:,1],0,splice_asf_Im[0]),splice_asf_Im[1])
-			##nexafs_E = numpy.append(numpy.insert(nexafs_cut[:,0],0,splice_eV[0]),splice_eV[1])
-			##M = (Y[1:]-Y[:-1])/(nexafs_E[1:]-nexafs_E[:-1])
-			##nexafs_coeffs_cut[:,0] = M
-			##nexafs_coeffs_cut[:,1] = Y[:-1]-M*nexafs_E[:-1]
-			###assemble merged coeffs and energy values
-			##self.merged_Im_coeffs = numpy.vstack((coeffs_cut_low, nexafs_coeffs_cut, self.total_Im_coeffs[-coeffs_cut_high.shape[0]-2,:], coeffs_cut_high))
-			##self.merged_E = numpy.concatenate((self.total_E[self.total_E<splice_eV[0]], nexafs_E, self.total_E[self.total_E>splice_eV[1]]))
-			### Extras for plotting
-			##self.splice_ind = (len(asf_cut_low[:, 0]), -len(asf_cut_high[:, 0]))
-			##cut_boolean = (splice_eV[0]<=raw_Im[:, 0]) != (raw_Im[:, 0]<=splice_eV[1])
-			##self.nexafs_CutOut = numpy.vstack((raw_Im[cut_boolean, 0], scaled_nexafs_Im[cut_boolean])).T
-		### Previous calculation of f_1 is no longer matching displayed f_2 data
-		##self.KK_Real_Spectrum = None
+			self.Full_E, self.Imaginary_Spectrum, self.NearEdgeData, self.splice_ind  = data.merge_spectra(self.NearEdgeData, 
+												  														   self.ASF_E, 
+																										   self.ASF_Data, 
+																										   merge_points=splice_eV, 
+																										   add_background=self.AddBackgroundCheckBox.GetValue(), 
+																										   fix_distortions=self.FixDistortionsCheckBox.GetValue(), 
+																										   plotting_extras=True)
 
 	def plot_data(self):
 		"""Plot data.
@@ -435,10 +363,7 @@ class MyFrame(wx.Frame):
 		Y_max = Y_max+window_Re_height*0.1
 		Y_min = Y_min-window_Re_height*0.1
 		# set up text, axis and draw
-		#print plotlist
-		#print X_min, X_max, Y_min, Y_max
 		self.PlotAxes.Draw(plot.PlotGraphics(plotlist, '', 'Energy (eV)', 'Magnitude'), xAxis=(X_min, X_max), yAxis=(0, Y_max))
-		#print "Plotlist =", len(plotlist)
 
 	def Splice_Text_check(self, evt):
 		self.combine_data()
