@@ -61,11 +61,18 @@ class Spec:
         """ returns a list if panda DataFrames of each spec of the .spec file with all columns"""
         return self.sep_dfs
     
-    def output_E_a_array(self, a = "sca"):
-        """ returns a x,y numpy array where x is "energy" and y is a parameter (default "sca") """
-        df = self.conj_data[["energy", a]]
-        a = df.to_numpy()
-        return a
+    def output_E_a_array(self, a = "sca", sep = None):
+        """ returns a x,y numpy array where x is "energy" and y is a parameter (default "sca") 
+            if sep is present returns only the partial spec run given by index sep
+        """
+        if sep == None:
+            df = self.conj_data[["energy", a]]
+            a = df.to_numpy()
+            return a
+        else:
+            df = self.sep_dfs[sep][["energy", a]]
+            a = df.to_numpy()
+            return a
     
     def output_E_a_div_b_array(self, a = "sca", b = "ic2"):
         """ returns a x,y/z numpy array where x is "energy" and y,z are parameters (default y= "sca", z="ic2") """
