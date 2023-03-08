@@ -10,8 +10,8 @@
 
 """This module implements data formats and conversions."""
 
-import logging
-logger = logging.getLogger(__name__)
+#import logging
+#logger = logging.getLogger(__name__)
 import json, os, warnings
 import numpy, re
 
@@ -44,7 +44,7 @@ def load_Element_Database():
 	of data types
 
 	"""
-	logger.info("Loading element database")
+	print("Loading element database")
 	with open(os.path.join(os.path.dirname(__file__),'ASF.json'),'r') as f:
 		Element_Database = json.load(f)
 	for Z in range(1,93):
@@ -111,15 +111,15 @@ def convert_Beta_to_ASF(raw_data, density=None, formula_mass=None, stoichiometry
 	"""
 	if number_density is None:
 		if density is None and formula_mass is None and stoichiometry is None:
-			logger.info("Material number density required for conversions involving Beta.")
+			print("Material number density required for conversions involving Beta.")
 		if density is None:
-			logger.info("Assuming a material mass density of 1 g/ml.")
+			print("Assuming a material mass density of 1 g/ml.")
 			density = 1.0
 		if formula_mass is None:
 			if stoichiometry is not None:
 				formula_mass = calculate_FormulaMass(stoichiometry)
 			else:
-				logger.info("Assuming a formula mass 100.")
+				print("Assuming a formula mass 100.")
 				formula_mass = 100.
 		number_density = density*AVOGADRO_CONSTANT/formula_mass
 	if reverse: #ASF to Beta
@@ -200,7 +200,7 @@ def ConvertElementSymbol(SymbolString):
 	try:
 		AtomicNumber = LIST_OF_ELEMENTS.index(SymbolString)+1
 	except ValueError:
-		logger.warn("\""+SymbolString+"\" is not a known element!")
+		print("\""+SymbolString+"\" is not a known element!")
 		AtomicNumber = 0
 	return AtomicNumber
 
@@ -218,7 +218,7 @@ def ParseChemicalFormula(Formula,recursion_flag=False):
 	TODO: return understood formula (i.e. input strign with errors removed)
 	"""
 	if not recursion_flag:
-		logger.info("Parsing '"+Formula+"' as a chemical formula")
+		print("Parsing '"+Formula+"' as a chemical formula")
 	Stoichiometry = []
 	m=re.search('((?P<Element>[A-Z][a-z]?)|\((?P<Paren>.*)\))(?P<Number>\d*(\.\d+)?)(?P<Remainder>.*)',Formula)
 	if len(m.group('Number')) is not 0:
@@ -262,7 +262,7 @@ def load_data(filename, load_options=None):
 	-------
 	The function returns a numpy array with two columns: Photon energy and Imaginary scattering factor values
 	"""
-	logger.info("Load data from file")
+	print("Load data from file")
 	data = []
 	if os.path.isfile(filename):
 		for line in open(filename):
@@ -272,9 +272,9 @@ def load_data(filename, load_options=None):
 				pass
 		data = numpy.array(data)
 	else:
-		logger.error(filename+" is not a valid file name.")
+		print(filename+" is not a valid file name.")
 	if len(data)==0:
-		logger.error("no data found in "+filename)
+		print("no data found in "+filename)
 		return None
 	else:
 		if isinstance(load_options,dict) and 'E_column' in load_options:
@@ -300,7 +300,7 @@ def export_data(filename, data, header_info=None,convert_to=None):
 	-------
 	None
 	"""
-	logger.info("Export data to file")
+	print("Export data to file")
 	if data is not None:
 		column_headings = '# E(eV)\tf1\tf2\n'
 		data_type = "Scattering factors"
@@ -319,9 +319,9 @@ def export_data(filename, data, header_info=None,convert_to=None):
 					outfile.write('# '+key+' = '+str(header_info[key])+'\n')
 			outfile.write(column_headings)
 			numpy.savetxt(outfile,data,fmt="%7g",delimiter="\t")
-		logger.info(data_type+" for "+header_info["Molecular Formula"]+" saved to "+filename)
+		print(data_type+" for "+header_info["Molecular Formula"]+" saved to "+filename)
 	else:
-		logger.info("Nothing to save.")
+		print("Nothing to save.")
 
 def convert_data(Data, FromType, ToType, Density=None, Formula_Mass=None):
 	"""Switchyard function for converting between data types.
@@ -336,7 +336,7 @@ def convert_data(Data, FromType, ToType, Density=None, Formula_Mass=None):
 	-------
 	The function returns a numpy array with two columns: Photon energy and absorption data values
 	"""
-	logger.info("Convert data from "+FromType+" to "+ToType+".")
+	print("Convert data from "+FromType+" to "+ToType+".")
 	if FromType.lower() in ['photoabsorption', 'nexafs', 'xanes']:
 		converted_data = convert_NEXAFS_to_ASF(Data)
 	elif FromType.lower() in ['beta']:
@@ -363,9 +363,9 @@ def calculate_asf(Stoichiometry):
 	total_E: 1D numpy array listing the starting photon energies of the segments that the spectrum is broken up into.
 	total_Im_coeffs: nx5 numpy array in which each row lists the polynomial coefficients describing the shape of the spectrum in that segment.
 	"""
-	logger.info("Calculate material scattering factor data from the given stoichiometry")
+	print("Calculate material scattering factor data from the given stoichiometry")
 	if len(Stoichiometry) is 0:
-		logger.error("No elements described by input.")
+		print("No elements described by input.")
 		return None
 	else:
 		# get unique energy points
@@ -404,7 +404,7 @@ def merge_spectra(NearEdge_Data, ASF_E, ASF_Data, merge_points=None, add_backgro
 	plot_scaled_NearEdge_Data (optional) : an updated verion of NearEdge_Data that has been scaled to match the scattering factor data.
 	splice_points (optional) : a list of two pairs of photon energy-magnitude values to represent the merge_points in a plot.
 	"""
-	logger.info("Merge near-edge data with wide-range scattering factor data")
+	print("Merge near-edge data with wide-range scattering factor data")
 	if merge_points is None:
 		merge_points = NearEdge_Data[[0,-1],0]
 	NearEdge_merge_ind = [numpy.where(NearEdge_Data[:,0] > merge_points[0])[0][0], numpy.where(NearEdge_Data[:,0] < merge_points[1])[0][-1]]
@@ -413,8 +413,8 @@ def merge_spectra(NearEdge_Data, ASF_E, ASF_Data, merge_points=None, add_backgro
 		asf_merge_ind = [numpy.where(ASF_E > merge_points[0])[0][0]-1, numpy.where(ASF_E > merge_points[1])[0][0]-1]
 		asf_merge_values = [coeffs_to_ASF(merge_points[0], ASF_Data[asf_merge_ind[0],:]), coeffs_to_ASF(merge_points[1], ASF_Data[asf_merge_ind[1],:])]
 		if add_background:
-			logger.info("Add background")
-			logger.error("Not implemented!")
+			print("Add background")
+			print("Not implemented!")
 			#get pre-edge region
 			#extrapolate background
 			scale = (asf_merge_values[1]-asf_merge_values[0])/(NearEdge_merge_values[1]-NearEdge_merge_values[0])
@@ -427,18 +427,18 @@ def merge_spectra(NearEdge_Data, ASF_E, ASF_Data, merge_points=None, add_backgro
 			SCIPY_FLAG = True
 		except ImportError:
 			SCIPY_FLAG = False
-			logger.info('Failed to import the scipy.optimize module - disabling the \'fix distortions\' option.')
+			print('Failed to import the scipy.optimize module - disabling the \'fix distortions\' option.')
 		if SCIPY_FLAG and fix_distortions:
-			logger.info("Fix distortions")
+			print("Fix distortions")
 			import scipy.optimize
 			ASF_fitY = 0.0*NearEdge_Data[:, 0]
 			for i, E in enumerate(NearEdge_Data[:,0]):
 				ASF_fitY[i] = coeffs_to_ASF(E, ASF_Data[numpy.where(ASF_E > E)[0][0]-1])
 			fitfunc = lambda p, x, y, asf_mv, asf: ((y-p*x)-(y[0]-p*x[0]))/((y[-1]-p*x[-1])-(y[0]-p*x[0]))*(asf_mv[1]-asf_mv[0])+asf_mv[0] - asf
 			p0 = -(NearEdge_merge_values[1]-NearEdge_merge_values[0])/((asf_merge_values[1]-asf_merge_values[0])*NearEdge_Data[0,0])
-			logger.debug("Fix distortions - start fit with p0 ="+str(p0))
+			print("Fix distortions - start fit with p0 ="+str(p0))
 			p1, success = scipy.optimize.leastsq(fitfunc, p0, args=(NearEdge_Data[:, 0], NearEdge_Data[:, 1], asf_merge_values, ASF_fitY))
-			logger.debug("Fix distortions - complete fit with p1 ="+str(p1[0]))
+			print("Fix distortions - complete fit with p1 ="+str(p1[0]))
 			NearEdge_fitY = asf_merge_values[0]+((NearEdge_Data[:,1]-p1[0]*NearEdge_Data[:,0])-(NearEdge_Data[0,1]-p1[0]*NearEdge_Data[0,0]))*(asf_merge_values[1]-asf_merge_values[0])/((NearEdge_Data[-1,1]-p1[0]*NearEdge_Data[-1,0])-(NearEdge_Data[0,1]-p1[0]*NearEdge_Data[0,0]))
 			scaled_NearEdge_Data = numpy.vstack((NearEdge_Data[:,0],NearEdge_fitY)).T
 	else:
@@ -486,7 +486,7 @@ def coeffs_to_linear(E, coeffs, threshold):
 	linear_E: 1D numpy array listing the starting photon energies of the segments that the spectrum is broken up into.
 	linear_Vals: 1D numpy array listing the  intensity values corresponding to the energies listed in linear_E.
 	"""
-	logger.info("Linearise data for plotting.")
+	print("Linearise data for plotting.")
 	curvature = 2*coeffs[:,2]/(E[0:-1]**3) + 6*coeffs[:,3]/(E[0:-1]**4) + 12*coeffs[:,4]/(E[0:-1]**5)
 	linear_E = numpy.array([])
 	linear_Vals = numpy.array([])
