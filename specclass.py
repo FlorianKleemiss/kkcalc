@@ -10,7 +10,7 @@ class Spec:
         self.column_names = []
         self.conj_data = pd.DataFrame()
         self.sep_dfs = []
-        
+         
     def __str__(self):
         return self.data_path
         
