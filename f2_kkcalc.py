@@ -272,13 +272,13 @@ if __name__ == '__main__':
     
     KK_Real_Spectrum = KK_PP(Full_E, Full_E, Imaginary_Spectrum, Relativistic_Correction)
     
-    #import matplotlib
-    #matplotlib.use('WXAgg')
-    print("Loading Brennan & Cowan Table")
+    print("Loading Brennan & Cowan Table",end="  ",flush=True)
     br = brennan.brennan()
+    print("..done")
     import pylab
     
     pylab.figure()
+    print("Calculating brennan & Cowan values",end="  ",flush=True)
     br_e = numpy.linspace(NearEdgeData[0,0],NearEdgeData[-1,0],1000)
     br_fp = numpy.zeros_like(br_e)
     br_fdp = numpy.zeros_like(br_e)
@@ -287,6 +287,7 @@ if __name__ == '__main__':
             fp, fdp = br.at_energy(e/1000, data.LIST_OF_ELEMENTS[Z-1])
             br_fp[i] += n*fp
             br_fdp[i] += n*fdp
+    print("..done")
     
     pylab.plot(ASF_Data3[0],ASF_Data3[1],':r')
     pylab.plot(ASF_E2,Re_data,':b')
