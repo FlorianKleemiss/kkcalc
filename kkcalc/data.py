@@ -287,49 +287,6 @@ def load_data(filename, load_options=None):
             data_column = data.shape[1]-1
         return data[:,[E_column,data_column]]
     
-def load_data_with_I0(filename, load_options=None):
-    """Read a standard ASCII file and return a list of lists of floats.
-    
-    Parameters
-    ----------
-    filename : string path to data file
-    load_options : dictionary of optional settings
-
-    Returns
-    -------
-    The function returns a numpy array with two columns: Photon energy and Imaginary scattering factor values
-    """
-    print("Load data from file")
-    data = []
-    if os.path.isfile(filename):
-        for line in open(filename):
-            try:
-                data.append([float(f) for f in line.split()])
-            except ValueError:
-                pass
-        data = numpy.array(data)
-    else:
-        print(filename+" is not a valid file name.")
-    if len(data)==0:
-        print("no data found in "+filename)
-        return None
-    else:
-        if isinstance(load_options,dict) and 'E_column' in load_options:
-            E_column = int(load_options['E_column'])
-        else:
-            E_column = 0
-        if isinstance(load_options,dict) and 'data_column' in load_options:
-            data_column = int(load_options['data_column'])
-        else:
-            data_column = data.shape[1]-1
-        if isinstance(load_options,dict) and 'I0_column' in load_options:
-            I0_column = int(load_options['I0_column'])
-        else:
-            I0_column = -100
-        if I0_column != -100:
-            data[:,data_column] /= data[:,I0_column]
-        return data[:,[E_column,data_column]]
-    
 def export_data(filename, data, header_info=None,convert_to=None):
     """Write spectral data into an ASCII file.
     

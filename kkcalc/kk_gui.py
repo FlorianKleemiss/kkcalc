@@ -116,10 +116,6 @@ class MyFrame(wx.Frame):
         SpliceSizer.Add(self.SpliceText2, 1)
         DataBox.Add(SpliceSizer, 1, wx.GROW)
 
-        # Background_CloseSizer = wx.BoxSizer(wx.HORIZONTAL)
-#        self.InvertDataCheckBox = wx.CheckBox(self, -1, "Invert Data")
-#        self.InvertDataCheckBox.Bind(wx.EVT_CHECKBOX, self.Splice_Text_check)
-#        DataBox.Add(self.InvertDataCheckBox, 0)
         self.AddBackgroundCheckBox = wx.CheckBox(self, -1, "Add background")
         self.AddBackgroundCheckBox.Bind(wx.EVT_CHECKBOX, self.Splice_Text_check)
         self.AddBackgroundCheckBox.Disable()
@@ -157,15 +153,10 @@ class MyFrame(wx.Frame):
         CalcBox.Add(CalcButton, 1, wx.GROW)
         CalcButton.Bind(wx.EVT_BUTTON, self.calculate)
 
-
-
         SizerL.Add(DataBox, 0, wx.GROW)
         SizerL.Add(self.MaterialBox, 1, wx.GROW)
         SizerL.AddStretchSpacer(1)
         SizerL.Add(CalcBox, 0, wx.GROW)
-
-
-
 
         self.PlotAxes = plot.PlotCanvas(self)
 
@@ -181,16 +172,6 @@ class MyFrame(wx.Frame):
         self.Fit()
 
         self.Show(True)
-        self.plot_data()
-
-    def Test(self):
-        """Convenience function for repetitive testing"""
-        self.filename = "NC-Xy_norm_bgsub.txt"
-        self.dirname = "data"
-        self.FileText.SetLabel("File: "+self.filename)
-        self.AddBackgroundCheckBox.SetValue(True)
-        self.combine_data()
-        self.PP_AlgorithmRadio.SetValue(True)
         self.plot_data()
 
     def OnAbout(self, e):
@@ -387,8 +368,6 @@ class MyFrame(wx.Frame):
             self.ASF_E, self.ASF_Data = data.calculate_asf(self.Stoichiometry)
         self.combine_data()
         self.plot_data()
-
-
 
     def calculate(self, button):
         """Calculate Button."""
