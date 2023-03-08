@@ -16,6 +16,11 @@ class Spec:
         
     def evaluate(self):
         self.read_inp_file()
+        lengths = []
+        for spec in self.sep_dfs:
+            lengths.append(spec.shape[0])
+        print(f"{self.spec_count} specs have been found in your input file. Your specs are of length: {lengths}")
+        
         
     def read_inp_file(self):
         with open(self.data_path, "r") as inp:
