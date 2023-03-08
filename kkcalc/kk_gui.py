@@ -363,7 +363,7 @@ class MyFrame(wx.Frame):
         Y_max = Y_max+window_Re_height*0.1
         Y_min = Y_min-window_Re_height*0.1
         # set up text, axis and draw
-        self.PlotAxes.Draw(plot.PlotGraphics(plotlist, '', 'Energy (eV)', 'Magnitude'), xAxis=(X_min, X_max), yAxis=(0, Y_max))
+        self.PlotAxes.Draw(plot.PlotGraphics(plotlist, '', 'Energy (eV)', 'Magnitude'), xAxis=(X_min, X_max), yAxis=(Y_min, Y_max))
 
     def Splice_Text_check(self, evt):
         self.combine_data()

@@ -38,7 +38,8 @@ def calc_relativistic_correction(stoichiometry):
     """
     correction = 0
     for z, n in stoichiometry:
-        correction += (z - (z/82.5)**2.37) * n
+        #correction += (z - (z/82.5)**2.37) * n
+        correction += (0 - (z/82.5)**2.37) * n
     return correction
 
 
@@ -188,7 +189,7 @@ def improve_accuracy(Full_E, Real_Spectrum, Imaginary_Spectrum, relativistic_cor
         Im_error = abs((Im_values[new_points-1]+Im_values[new_points])/2. - Im_midpoints)
         Re_error = abs((Re_values[new_points-1]+Re_values[new_points])/2. - Re_midpoints)
         improved = (Im_error>tolerance) | (Re_error>tolerance)
-        logger.debug(str(numpy.sum(improved))+" points (out of "+str(len(improved))+") can be improved in pass number "+str(count+1)+".")
+        print(str(numpy.sum(improved))+" points (out of "+str(len(improved))+") can be improved in pass number "+str(count+1)+".")
         total_improved_points += numpy.sum(improved)
         #insert new points and values
         Im_values = numpy.insert(Im_values,new_points[improved],Im_midpoints[improved])
@@ -237,7 +238,7 @@ if __name__ == '__main__':
     #use argparse here to get command line arguments
     #process arguments and pass to a pythonic function
     
-    Stoichiometry = data.ParseChemicalFormula('Mo')
+    Stoichiometry = data.ParseChemicalFormula('NaUF5')
     #Stoichiometry = data.ParseChemicalFormula('GaAs')
     Relativistic_Correction = calc_relativistic_correction(Stoichiometry)
     ASF_E, ASF_Data = data.calculate_asf(Stoichiometry)
@@ -255,6 +256,19 @@ if __name__ == '__main__':
     ASF_Data3 = data.coeffs_to_linear(ASF_E2, ASF_Data1, 0.1)
     ASF_Data2 = data.coeffs_to_ASF(ASF_E2, numpy.vstack((ASF_Data1,ASF_Data1[-1])))
     Re_data = KK_PP(ASF_E2, ASF_E2, ASF_Data1, Relativistic_Correction)
+
+    # Get splice points
+    raw_file = data.load_data_with_I0("NaUF5.spec",load_options={'data_column': 4, 'I0_column': 10})
+    splice_eV = numpy.array([raw_file[0,0], raw_file[-1,0]])  # data limits
+    Full_E, Imaginary_Spectrum, NearEdgeData, splice_ind  = data.merge_spectra(raw_file, 
+                                                                               ASF_E2, 
+                                                                               ASF_Data1, 
+                                                                               merge_points=splice_eV, 
+                                                                               add_background=False,
+                                                                               fix_distortions=True,
+                                                                               plotting_extras=True)
+    
+    KK_Real_Spectrum = KK_PP(Full_E, Full_E, Imaginary_Spectrum, Relativistic_Correction)
     
     #import matplotlib
     #matplotlib.use('WXAgg')
@@ -262,9 +276,42 @@ if __name__ == '__main__':
     
     pylab.figure()
     #pylab.plot(Output[:,0],Output[:,1],'xg-',Output[:,0],Output[:,2],'xb-')
-    pylab.plot(ASF_E2,ASF_Data2,'r-')
-    pylab.plot(ASF_E2,Re_data,'b-')
+    #pylab.plot(ASF_E2,ASF_Data2,':r')
+    pylab.plot(ASF_Data3[0],ASF_Data3[1],':r')
+    pylab.plot(ASF_E2,Re_data,':b')
+
+    pylab.plot(NearEdgeData[:,0],NearEdgeData[:,1],'+c')
+    pylab.plot(Full_E,KK_Real_Spectrum,'--g')
+    Es = [17100,
+17150,
+17160,
+17166,
+17180,
+17200,
+17220,
+17300]
+    fps = [-13.6595,
+-16.2754,
+-17.5141,
+-19.1306,
+-16.6550,
+-12.8490,
+-13.8983,
+-11.7568]
+    fdps = [6.6971,
+      5.7636,
+      6.0041,
+      6.5918,
+      17.0275,
+      11.0402,
+      11.5513,
+      11.0343]
+    
+    pylab.plot(Es,fps,'ok')
+    pylab.plot(Es,fdps,'om')
     
     #pylab.plot(ASF_Data3[0],ASF_Data3[1],'r-')
-    pylab.xscale('log')
+    #pylab.xscale('log')
+    pylab.xlim(raw_file[0,0], raw_file[-1,0])
+    pylab.ylim(-35,20)
     pylab.show()

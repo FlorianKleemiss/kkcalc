@@ -221,17 +221,17 @@ def ParseChemicalFormula(Formula,recursion_flag=False):
         print("Parsing '"+Formula+"' as a chemical formula")
     Stoichiometry = []
     m=re.search('((?P<Element>[A-Z][a-z]?)|\((?P<Paren>.*)\))(?P<Number>\d*(\.\d+)?)(?P<Remainder>.*)',Formula)
-    if len(m.group('Number')) is not 0:
+    if len(m.group('Number')) != 0:
         Number = float(m.group('Number'))
     else:
         Number = 1.0
     if m.group('Element') is not None:
         Z = ConvertElementSymbol(m.group('Element'))
-        if Z is not 0:
+        if Z != 0:
             Stoichiometry.append([Z,Number])
     elif len(m.group('Paren')) > 0:
         Stoichiometry +=[[x[0],x[1]*Number] for x in ParseChemicalFormula(m.group('Paren'),recursion_flag=True)]
-    if len(m.group('Remainder')) is not 0:
+    if len(m.group('Remainder')) != 0:
         Stoichiometry += ParseChemicalFormula(m.group('Remainder'),recursion_flag=True)
     return Stoichiometry
     
@@ -285,6 +285,49 @@ def load_data(filename, load_options=None):
             data_column = int(load_options['data_column'])
         else:
             data_column = data.shape[1]-1
+        return data[:,[E_column,data_column]]
+    
+def load_data_with_I0(filename, load_options=None):
+    """Read a standard ASCII file and return a list of lists of floats.
+    
+    Parameters
+    ----------
+    filename : string path to data file
+    load_options : dictionary of optional settings
+
+    Returns
+    -------
+    The function returns a numpy array with two columns: Photon energy and Imaginary scattering factor values
+    """
+    print("Load data from file")
+    data = []
+    if os.path.isfile(filename):
+        for line in open(filename):
+            try:
+                data.append([float(f) for f in line.split()])
+            except ValueError:
+                pass
+        data = numpy.array(data)
+    else:
+        print(filename+" is not a valid file name.")
+    if len(data)==0:
+        print("no data found in "+filename)
+        return None
+    else:
+        if isinstance(load_options,dict) and 'E_column' in load_options:
+            E_column = int(load_options['E_column'])
+        else:
+            E_column = 0
+        if isinstance(load_options,dict) and 'data_column' in load_options:
+            data_column = int(load_options['data_column'])
+        else:
+            data_column = data.shape[1]-1
+        if isinstance(load_options,dict) and 'I0_column' in load_options:
+            I0_column = int(load_options['I0_column'])
+        else:
+            I0_column = -100
+        if I0_column != -100:
+            data[:,data_column] /= data[:,I0_column]
         return data[:,[E_column,data_column]]
     
 def export_data(filename, data, header_info=None,convert_to=None):
@@ -364,7 +407,7 @@ def calculate_asf(Stoichiometry):
     total_Im_coeffs: nx5 numpy array in which each row lists the polynomial coefficients describing the shape of the spectrum in that segment.
     """
     print("Calculate material scattering factor data from the given stoichiometry")
-    if len(Stoichiometry) is 0:
+    if len(Stoichiometry) == 0:
         print("No elements described by input.")
         return None
     else:
