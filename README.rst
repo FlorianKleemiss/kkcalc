@@ -2,6 +2,7 @@
 KKcalc
 ======
 
+This version is a modification of the original kkcalc program written by Watts et al. 2014, see below.
 
 Introduction
 ============
