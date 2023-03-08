@@ -66,23 +66,28 @@ class Spec:
         """ returns a list if panda DataFrames of each spec of the .spec file with all columns"""
         return self.sep_dfs
     
-    def output_E_a_array(self, a = "sca", sep = None):
+    def output_E_a_array(self, a = "sca", b = None, sep = None):
         """ returns a x,y numpy array where x is "energy" and y is a parameter (default "sca") 
             if sep is present returns only the partial spec run given by index sep
+            if b is present column a will be divided by b to "normalize"
         """
         if sep == None:
-            df = self.conj_data[["energy", a]]
+            if b == None:
+                df = self.conj_data[["energy", a]]
+                pass
+            else:
+                df = self.conj_data[["energy", a, b]]
+                df["div"] = df[a] / df[b]
+                df = df[["energy", "div"]]
             a = df.to_numpy()
             return a
         else:
-            df = self.sep_dfs[sep][["energy", a]]
+            if b == None:
+                df = self.sep_dfs[sep][["energy", a]]
+                pass
+            else:
+                df = self.sep_dfs[sep][["energy", a, b]]
+                df["div"] = df[a] / df[b]
+                df = df[["energy", "div"]]
             a = df.to_numpy()
             return a
-    
-    def output_E_a_div_b_array(self, a = "sca", b = "ic2"):
-        """ returns a x,y/z numpy array where x is "energy" and y,z are parameters (default y= "sca", z="ic2") """
-        df = self.conj_data[["energy", a, b]]
-        df["div"] = df[a] / df[b]
-        df_out = df[["energy", "div"]]
-        df.to_numpy()
-        return df_out

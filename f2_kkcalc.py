@@ -260,9 +260,11 @@ if __name__ == '__main__':
     Re_data = KK_PP(ASF_E2, ASF_E2, ASF_Data1, Relativistic_Correction)
 
     # Get splice points
-    raw_file = data.load_data_with_I0("NaUF5.spec",load_options={'data_column': 4, 'I0_column': 10})
-    splice_eV = numpy.array([raw_file[0,0], raw_file[-1,0]])  # data limits
-    Full_E, Imaginary_Spectrum, NearEdgeData, splice_ind  = data.merge_spectra(raw_file, 
+    spec_test = specclass.Spec("HL-14-NaUF5.spec")
+    spec_test.evaluate()
+    raw_speccy = spec_test.output_E_a_array(a="sca",b="ic2",sep=1)
+    splice_eV = numpy.array([raw_speccy[0,0], raw_speccy[-1,0]])  # data limits
+    Full_E, Imaginary_Spectrum, NearEdgeData, splice_ind  = data.merge_spectra(raw_speccy, 
                                                                                ASF_E, 
                                                                                ASF_Data, 
                                                                                merge_points=splice_eV, 
@@ -305,6 +307,6 @@ if __name__ == '__main__':
     
     #pylab.plot(ASF_Data3[0],ASF_Data3[1],'r-')
     #pylab.xscale('log')
-    pylab.xlim(raw_file[0,0], raw_file[-1,0])
+    pylab.xlim(raw_speccy[0,0], raw_speccy[-1,0])
     pylab.ylim(-35,20)
     pylab.show()
