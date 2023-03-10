@@ -1,2 +1,4 @@
 
 *.pyc
+specs/*mac*.spec
+spec/*wide*.spec
