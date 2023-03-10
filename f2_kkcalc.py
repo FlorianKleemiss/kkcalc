@@ -128,8 +128,8 @@ def KK_PP(Eval_Energy, Energy, imaginary_spectrum, relativistic_correction):
     X2 = Energy[1:]
     E = numpy.tile(Eval_Energy, (len(Energy)-1, 1)).T
     Full_coeffs = imaginary_spectrum.T
-    Symb_1 = (( Full_coeffs[0, :]*E+Full_coeffs[1, :])*(X2-X1)+0.5*Full_coeffs[0, :]*(X2**2-X1**2)-(Full_coeffs[3, :]/E+Full_coeffs[4, :]*E**-2)*numpy.log(numpy.absolute(X2/X1))+Full_coeffs[4, :]/E*(X2**-1-X1**-1))
-    Symb_2 = ((-Full_coeffs[0, :]*E+Full_coeffs[1, :])*(X2-X1)+0.5*Full_coeffs[0, :]*(X2**2-X1**2)+(Full_coeffs[3, :]/E-Full_coeffs[4, :]*E**-2)*numpy.log(numpy.absolute(X2/X1))-Full_coeffs[4, :]/E*(X2**-1-X1**-1))+(Full_coeffs[0, :]*E**2-Full_coeffs[1, :]*E+Full_coeffs[2, :]-Full_coeffs[3, :]*E**-1+Full_coeffs[4, :]*E**-2)*numpy.log(numpy.absolute((X2+E)/(X1+E)))
+    Symb_1 = (( Full_coeffs[0, :]*E + Full_coeffs[1, :])*(X2-X1) + 0.5*Full_coeffs[0, :]*(X2**2-X1**2) - (Full_coeffs[3, :]/E+Full_coeffs[4, :]*E**-2)*numpy.log(numpy.absolute(X2/X1)) + Full_coeffs[4, :]/E*(X2**-1-X1**-1))
+    Symb_2 = ((-Full_coeffs[0, :]*E + Full_coeffs[1, :])*(X2-X1) + 0.5*Full_coeffs[0, :]*(X2**2-X1**2) + (Full_coeffs[3, :]/E-Full_coeffs[4, :]*E**-2)*numpy.log(numpy.absolute(X2/X1)) - Full_coeffs[4, :]/E*(X2**-1-X1**-1)) + (Full_coeffs[0, :]*E**2-Full_coeffs[1, :]*E+Full_coeffs[2, :]-Full_coeffs[3, :]*E**-1+Full_coeffs[4, :]*E**-2)*numpy.log(numpy.absolute((X2+E)/(X1+E)))
     Symb_3 = (1-1*((X2==E)|(X1==E)))*(Full_coeffs[0, :]*E**2+Full_coeffs[1, :]*E+Full_coeffs[2, :]+Full_coeffs[3, :]*E**-1+Full_coeffs[4, :]*E**-2)*numpy.log(numpy.absolute((X2-E+1*(X2==E))/(X1-E+1*(X1==E))))
     Symb_B = numpy.sum(Symb_2 - Symb_1 - Symb_3, axis=1)  # Sum areas for approximate integral
     # Patch singularities
@@ -145,6 +145,7 @@ def KK_PP(Eval_Energy, Energy, imaginary_spectrum, relativistic_correction):
     Symb_singularities[Eval_hits] = (C2[0, :]*XE**2+C2[1, :]*XE+C2[2, :]+C2[3, :]*XE**-1+C2[4, :]*XE**-2)*numpy.log(numpy.absolute((X2-XE)/(X1-XE)))
     # Finish things off
     KK_Re = (Symb_B-Symb_singularities) / (math.pi*Eval_Energy) + relativistic_correction
+    #KK_Re = (Symb_B) / (math.pi*Eval_Energy) + relativistic_correction
     print("Done!")
     return KK_Re
 
@@ -239,8 +240,57 @@ def kk_calculate_real(NearEdgeDataFile, ChemicalFormula, load_options=None, inpu
 if __name__ == '__main__':
     #use argparse here to get command line arguments
     #process arguments and pass to a pythonic function
+
+    from matplotlib import pyplot as plt
+    fig = plt.figure()
+    pylab = fig.add_subplot(1,1,1)
     
-    Stoichiometry = data.ParseChemicalFormula('NaUF5')
+    #HL19
+    #Es = [17100,17150,17181,17203,17220,17250,17300]
+    #fps = numpy.array([-14.3032, -16.7177,-16.1259,-13.9231,-14.0630,-13.4530,-12.6767])
+    #fdps = numpy.array([6.8452, 6.4845, 17.2928, 10.0615, 11.8307, 11.1966, 11.8952])
+    ##fps *= 2.0
+    ##fdps *= 2.0
+    #Stoichiometry = data.ParseChemicalFormula('U')
+    #spec_test = specclass.Spec("specs/HL19-NaU2F9-manual.spec")
+    #pylab.set_title("HL19 NaU2F9")
+    
+
+    #HL14
+    #Es = [17100,17150,17160,17166,17180,17200,17220,17300]
+    #fps = [-13.6595,-16.2754,-17.5141,-19.1306,-16.6550,-12.8490,-13.8983,-11.7568]
+    #fdps = [6.6971, 5.7636, 6.0041, 6.5918, 17.0275, 11.0402, 11.5513, 11.0343]
+    #Stoichiometry = data.ParseChemicalFormula('U')
+    #spec_test = specclass.Spec("specs/HL14-NaUF5-manual.spec")
+    #pylab.set_title("HL14 NaUF5")
+
+    #HL17
+    temp = numpy.array([[17000, -10.9052, 4.7638],
+    [17150, -14.9665, 4.4791 ],
+    [17176, -19.1501, 8.1872 ],
+    [17184, -15.7981, 12.4364],
+    [17200, -11.6748, 10.3490],
+    [17210, -12.6413, 9.4839 ],
+    [17250, -11.5393, 9.7332 ]]).T
+    Es = temp[0].tolist()
+    fps = temp[1].tolist()
+    fdps =  temp[2].tolist()
+    #
+    ##resolution limit 0.57
+    ##temp_low_res = numpy.array([[17000, -10.8578, 5.1398 ],
+    ##[17150, -14.9456, 3.9882 ],
+    ##[17176, -19.5159, 8.3557 ], 
+    ##[17184, -16.2605, 12.4530],
+    ##[17200, -12.0690, 10.4034],
+    ##[17210, -12.6650, 9.6555 ],
+    ##[17250, -11.8404, 9.8187 ]]).T
+    ##Es_low_res = temp_low_res[0].tolist()
+    ##fps_low_res = temp_low_res[1].tolist()
+    ##fdps_low_res =  temp_low_res[2].tolist()
+    Stoichiometry = data.ParseChemicalFormula('U')
+    spec_test = specclass.Spec("specs/HL1-Cs2UO2TiO4-manual.spec")
+    pylab.set_title("HL17 Cs2UO2TiO4")
+
     #Stoichiometry = data.ParseChemicalFormula('GaAs')
     Relativistic_Correction = calc_relativistic_correction(Stoichiometry)
     ASF_E, ASF_Data = data.calculate_asf(Stoichiometry)
@@ -254,34 +304,78 @@ if __name__ == '__main__':
             ASF_E2 = numpy.append(ASF_E2,e)
             if (i < len(ASF_Data)):
                 temp.append(ASF_Data[i,:])
-    ASF_Data1 = numpy.array(temp)
-    ASF_Data3 = data.coeffs_to_linear(ASF_E2, ASF_Data1, 0.1)
-    ASF_Data2 = data.coeffs_to_ASF(ASF_E2, numpy.vstack((ASF_Data1,ASF_Data1[-1])))
-    Re_data = KK_PP(ASF_E2, ASF_E2, ASF_Data1, Relativistic_Correction)
+    #ASF_Data1 = numpy.array(temp)
+    #ASF_Data3 = data.coeffs_to_linear(ASF_E2, ASF_Data1, 0.1)
+    #ASF_Data2 = data.coeffs_to_ASF(ASF_E2, numpy.vstack((ASF_Data1,ASF_Data1[-1])))
+    #Re_data = KK_PP(ASF_E2, ASF_E2, ASF_Data1, Relativistic_Correction)
 
     # Get splice points
-    spec_test = specclass.Spec("HL-14-NaUF5.spec")
     spec_test.evaluate()
-    raw_speccy = spec_test.output_E_a_array(a="sca",b="ic2",sep=1)
+    raw_speccy = spec_test.output_E_a_array(a="sca")
     splice_eV = numpy.array([raw_speccy[0,0], raw_speccy[-1,0]])  # data limits
-    Full_E, Imaginary_Spectrum, NearEdgeData, splice_ind  = data.merge_spectra(raw_speccy, 
+    Full_E, Imaginary_Spectrum, NearEdgeData, splice_ind, p1  = data.merge_spectra(raw_speccy, 
                                                                                ASF_E, 
                                                                                ASF_Data, 
-                                                                               merge_points=splice_eV, 
-                                                                               add_background=False,
+                                                                               add_background=True, #abused now for sclaing last and first 3 values
                                                                                fix_distortions=True,
                                                                                plotting_extras=True)
-    
-    KK_Real_Spectrum = KK_PP(Full_E, Full_E, Imaginary_Spectrum, Relativistic_Correction)
     
     print("Loading Brennan & Cowan Table",end="  ",flush=True)
     br = brennan.brennan()
     print("..done")
-    import pylab
     
-    pylab.figure()
+    Full_E2, Full_Coefs_br, NearEdgeData2 = data.merge_spectra_brennan(raw_speccy, 
+                                                                               ASF_E, 
+                                                                               br,
+                                                                               92,
+                                                                               add_background=True, #abused now for sclaing last and first 3 values
+                                                                               fix_distortions=True)
+    
+    KK_Real_Spectrum = KK_PP(Full_E, Full_E, Imaginary_Spectrum, Relativistic_Correction)
+
+    #KK_Real_brennan = KK_PP(Full_E2, Full_E2, Full_Coefs_br, Relativistic_Correction)
+    #null = 0
+
+    residual = lambda par, spectrum, fdp: ((spectrum*par[0]+par[1]) - fdp)
+    
+    import scipy
+    x0 = numpy.array([1.0,0.0])
+    i_start = 0
+    for i,e in enumerate(NearEdgeData[:,0]):
+        if e >= min(Es):
+            i_start = i-1
+            break
+    i_end = 0
+    for i,e in enumerate(NearEdgeData[i_start:,0]):
+        if e >= max(Es):
+            i_end = i+1
+            break
+
+    spectrum_part = NearEdgeData[i_start:i_end,1]
+    energies_part = NearEdgeData[i_start:i_end,0]
+    spec_fdps = []
+    spec_es = []
+    for E in Es:
+        dist = 2E20
+        for i,e in enumerate(energies_part):
+            dist_new = abs(e-E)
+            if dist_new < dist:
+                dist = dist_new
+            else:
+                spec_fdps.append(spectrum_part[i])
+                spec_es.append(energies_part[i])
+                break
+    spec_fdps = numpy.array(spec_fdps)
+    p = scipy.optimize.least_squares(residual, x0, args=(spec_fdps, numpy.array(fdps)),verbose=1,gtol=1E-10).x
+    figgy = plt.figure()
+    axy = figgy.add_subplot(1,1,1)
+    axy.scatter(spec_fdps,fdps)
+    x = numpy.linspace(min(fdps)-2,max(fdps)+1,200)
+    axy.plot(x, x*p[0]+p[1])
+    plt.show()
+    
     print("Calculating brennan & Cowan values",end="  ",flush=True)
-    br_e = numpy.linspace(NearEdgeData[0,0],NearEdgeData[-1,0],1000)
+    br_e = numpy.linspace(NearEdgeData[0,0],NearEdgeData[-1,0],2000)
     br_fp = numpy.zeros_like(br_e)
     br_fdp = numpy.zeros_like(br_e)
     for i,e in enumerate(br_e):
@@ -291,22 +385,33 @@ if __name__ == '__main__':
             br_fdp[i] += n*fdp
     print("..done")
     
-    pylab.plot(ASF_Data3[0],ASF_Data3[1],':r')
-    pylab.plot(ASF_E2,Re_data,':b')
+    #pylab.plot(ASF_Data3[0],ASF_Data3[1],':r')
+    #pylab.plot(ASF_E2,Re_data,':b')
     pylab.plot(br_e,br_fdp,'-r')
     pylab.plot(br_e,br_fp,'-b')
 
+    #corr = br_fp[0] + \
+    #       ((NearEdgeData[:,1]-p1*NearEdgeData[:,0])-(NearEdgeData[0,1]-p1*NearEdgeData[0,0])) * \
+    #       (br_fdp[-1]-br_fdp[0]) / \
+    #       ((NearEdgeData[-1,1]-p1*NearEdgeData[-1,0])-(NearEdgeData[0,1]-p1*NearEdgeData[0,0]))
+    #pylab.plot(NearEdgeData[:,0],corr,"--k")
+
+
+
     pylab.plot(NearEdgeData[:,0],NearEdgeData[:,1],'+c')
     pylab.plot(Full_E,KK_Real_Spectrum,'--g')
-    Es = [17100,17150,17160,17166,17180,17200,17220,17300]
-    fps = [-13.6595,-16.2754,-17.5141,-19.1306,-16.6550,-12.8490,-13.8983,-11.7568]
-    fdps = [6.6971, 5.7636, 6.0041, 6.5918, 17.0275, 11.0402, 11.5513, 11.0343]
     
     pylab.plot(Es,fps,'ok')
     pylab.plot(Es,fdps,'om')
+    if 'fps_low_res' in locals():
+        pylab.plot(Es_low_res,fps_low_res,'oy')
+        pylab.plot(Es_low_res,fdps_low_res,'og')
     
     #pylab.plot(ASF_Data3[0],ASF_Data3[1],'r-')
     #pylab.xscale('log')
-    pylab.xlim(raw_speccy[0,0], raw_speccy[-1,0])
-    pylab.ylim(-35,20)
-    pylab.show()
+    pylab.set_xlim(raw_speccy[0,0], raw_speccy[-1,0])
+    pylab.set_ylim(-50,50)
+    pylab.set_xlabel("energy / eV")
+    pylab.set_ylabel("scattering factor /e")
+    plt.show()
+    

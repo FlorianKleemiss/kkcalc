@@ -434,12 +434,16 @@ def merge_spectra(NearEdge_Data, ASF_E, ASF_Data, merge_points=None, add_backgro
             ASF_fitY = 0.0*NearEdge_Data[:, 0]
             for i, E in enumerate(NearEdge_Data[:,0]):
                 ASF_fitY[i] = coeffs_to_ASF(E, ASF_Data[numpy.where(ASF_E > E)[0][0]-1])
+                #((y-p1*x) - (y0-p1x0)) / ((yn-p*xn) - (y0-p*x0)) * (yn-y0) + y0 - target 
             fitfunc = lambda p, x, y, asf_mv, asf: ((y-p*x)-(y[0]-p*x[0]))/((y[-1]-p*x[-1])-(y[0]-p*x[0]))*(asf_mv[1]-asf_mv[0])+asf_mv[0] - asf
             p0 = -(NearEdge_merge_values[1]-NearEdge_merge_values[0])/((asf_merge_values[1]-asf_merge_values[0])*NearEdge_Data[0,0])
             print("Fix distortions - start fit with p0 ="+str(p0))
             p1, success = scipy.optimize.leastsq(fitfunc, p0, args=(NearEdge_Data[:, 0], NearEdge_Data[:, 1], asf_merge_values, ASF_fitY))
             print("Fix distortions - complete fit with p1 ="+str(p1[0]))
-            NearEdge_fitY = asf_merge_values[0]+((NearEdge_Data[:,1]-p1[0]*NearEdge_Data[:,0])-(NearEdge_Data[0,1]-p1[0]*NearEdge_Data[0,0]))*(asf_merge_values[1]-asf_merge_values[0])/((NearEdge_Data[-1,1]-p1[0]*NearEdge_Data[-1,0])-(NearEdge_Data[0,1]-p1[0]*NearEdge_Data[0,0]))
+            NearEdge_fitY = asf_merge_values[0]+ \
+                ((NearEdge_Data[:,1]-p1[0]*NearEdge_Data[:,0])-(NearEdge_Data[0,1]-p1[0]*NearEdge_Data[0,0]))*\
+                (asf_merge_values[1]-asf_merge_values[0]) / \
+                ((NearEdge_Data[-1,1]-p1[0]*NearEdge_Data[-1,0])-(NearEdge_Data[0,1]-p1[0]*NearEdge_Data[0,0]))
             scaled_NearEdge_Data = numpy.vstack((NearEdge_Data[:,0],NearEdge_fitY)).T
     else:
         scaled_NearEdge_Data = NearEdge_Data.copy()
@@ -466,9 +470,106 @@ def merge_spectra(NearEdge_Data, ASF_E, ASF_Data, merge_points=None, add_backgro
         Full_Coeffs = numpy.vstack((ASF_Data[0:asf_merge_ind[0]+1,:],NearEdge_Coeffs,ASF_Data[asf_merge_ind[1]+1:,:]))
         splice_points = [asf_merge_ind[0]+1, asf_merge_ind[0]+len(scaled_NearEdge_Data[:,0])]
     if plotting_extras:
-        return Full_E, Full_Coeffs, plot_scaled_NearEdge_Data, splice_points
+        return Full_E, Full_Coeffs, plot_scaled_NearEdge_Data, splice_points, p1[0]
     else:
         return Full_E, Full_Coeffs
+    
+def merge_spectra_brennan(NearEdge_Data, ASF_E, brennan, Z, add_background=False, fix_distortions=False):
+    """Normalise the user-provided, near-edge data to the Brennan & Cowan scattering factor data and combine them.
+    
+    Parameters
+    ----------
+    NearEdge_Data : a numpy array with two columns: Photon energy and absorption data values.
+    ASF_E : 1D numpy array listing the starting photon energies for each spectrum segment.
+    brennan : the brennan and cowan table object
+    Z : Element number for brennan calculation
+    add_background : boolean flag for adding a background function to the provided near-edge data.
+    fix_distortions : boolean flag for removing erroneous slope from the provided near-edge data.
+
+    Returns
+    -------
+    Full_E : 1D numpy array listing the updated starting photon energies for each spectrum segment.
+    Full_Coeffs : nx5 numpy array in which each row lists the polynomial coefficients describing the shape of the spectrum in that segment.
+    plot_scaled_NearEdge_Data : an updated verion of NearEdge_Data that has been scaled to match the scattering factor data.
+    """
+    print("Merge near-edge data with wide-range scattering factor data")
+    merge_points = NearEdge_Data[[0,-1],0]
+    NearEdge_merge_ind = [numpy.where(NearEdge_Data[:,0] > merge_points[0])[0][0], numpy.where(NearEdge_Data[:,0] < merge_points[1])[0][-1]]
+    NearEdge_merge_values = numpy.interp(merge_points, NearEdge_Data[:,0], NearEdge_Data[:,1])
+    asf_merge_ind = [numpy.where(ASF_E > merge_points[0])[0][0]-1, numpy.where(ASF_E > merge_points[1])[0][0]-1]
+    asf_merge_values = [brennan.at_energy(merge_points[0]/1000,LIST_OF_ELEMENTS[Z-1])[1], brennan.at_energy(merge_points[1]/1000,LIST_OF_ELEMENTS[Z-1])[1]]
+    if add_background:
+        print("Add background")
+        print("Not implemented!")
+        #get pre-edge region
+        #extrapolate background
+        scale = (asf_merge_values[1]-asf_merge_values[0])/(NearEdge_merge_values[1]-NearEdge_merge_values[0])
+        scaled_NearEdge_Data = numpy.vstack((NearEdge_Data[:,0],((NearEdge_Data[:, 1]-NearEdge_merge_values[0])*scale)+asf_merge_values[0])).T
+    else:# don't add background
+        scale = (asf_merge_values[1]-asf_merge_values[0])/(NearEdge_merge_values[1]-NearEdge_merge_values[0])
+        scaled_NearEdge_Data = numpy.vstack((NearEdge_Data[:,0],((NearEdge_Data[:, 1]-NearEdge_merge_values[0])*scale)+asf_merge_values[0])).T
+    try:
+        import scipy.optimize
+        SCIPY_FLAG = True
+    except ImportError:
+        SCIPY_FLAG = False
+        print('Failed to import the scipy.optimize module - disabling the \'fix distortions\' option.')
+    if SCIPY_FLAG and fix_distortions:
+        print("Fix distortions")
+        import scipy.optimize
+        ASF_fitY = 0.0*NearEdge_Data[:, 0]
+        for i, E in enumerate(NearEdge_Data[:,0]):
+            ASF_fitY[i] = brennan.at_energy(E/1000,LIST_OF_ELEMENTS[Z-1])[1]
+            #((y-p1*x) - (y0-p1x0)) / ((yn-p*xn) - (y0-p*x0)) * (yn-y0) + y0 - target 
+        fitfunc = lambda p, x, y, asf_mv, asf: ((y-p*x)-(y[0]-p*x[0]))/((y[-1]-p*x[-1])-(y[0]-p*x[0]))*(asf_mv[1]-asf_mv[0])+asf_mv[0] - asf
+        p0 = -(NearEdge_merge_values[1]-NearEdge_merge_values[0])/((asf_merge_values[1]-asf_merge_values[0])*NearEdge_Data[0,0])
+        print("Fix distortions - start fit with p0 ="+str(p0))
+        p1, success = scipy.optimize.leastsq(fitfunc, p0, args=(NearEdge_Data[:, 0], NearEdge_Data[:, 1], asf_merge_values, ASF_fitY))
+        print("Fix distortions - complete fit with p1 ="+str(p1[0]))
+        NearEdge_fitY = asf_merge_values[0]+ \
+            ((NearEdge_Data[:,1]-p1[0]*NearEdge_Data[:,0])-(NearEdge_Data[0,1]-p1[0]*NearEdge_Data[0,0]))*\
+            (asf_merge_values[1]-asf_merge_values[0]) / \
+            ((NearEdge_Data[-1,1]-p1[0]*NearEdge_Data[-1,0])-(NearEdge_Data[0,1]-p1[0]*NearEdge_Data[0,0]))
+        scaled_NearEdge_Data = numpy.vstack((NearEdge_Data[:,0],NearEdge_fitY)).T
+    plot_scaled_NearEdge_Data = scaled_NearEdge_Data.copy()
+    scaled_NearEdge_Data = numpy.vstack(((merge_points[0],asf_merge_values[0]),scaled_NearEdge_Data[NearEdge_merge_ind[0]:NearEdge_merge_ind[1]+1,:],(merge_points[1],asf_merge_values[1])))
+
+    #Now convert point values to coefficients
+    NearEdge_Coeffs = numpy.zeros((len(scaled_NearEdge_Data),5))
+    M = (scaled_NearEdge_Data[1:,1]-scaled_NearEdge_Data[:-1,1])/(scaled_NearEdge_Data[1:,0]-scaled_NearEdge_Data[:-1,0])
+    NearEdge_Coeffs[:-1,0] = M
+    NearEdge_Coeffs[:-1,1] = scaled_NearEdge_Data[:-1,1]-M*scaled_NearEdge_Data[:-1,0]
+    NearEdge_Coeffs[-1,:] = brennan.at_energy(merge_points[-1]/1000,LIST_OF_ELEMENTS[Z-1])[1]
+    #Paste data sections together
+    Full_E = numpy.hstack((ASF_E[0:asf_merge_ind[0]+1],scaled_NearEdge_Data[:,0],ASF_E[asf_merge_ind[1]+1:]))
+    pre_values = []
+    pre_e = []
+    post_values = []
+    post_e = []
+    for e in Full_E:
+        if e < NearEdge_Data[0][0]:
+            pre_values.append(brennan.at_energy(e/1000,LIST_OF_ELEMENTS[Z-1])[1])
+            pre_e.append(e)
+        elif e > NearEdge_Data[-1][0]:
+            post_values.append(brennan.at_energy(e/1000,LIST_OF_ELEMENTS[Z-1])[1])
+            post_e.append(e)
+
+    pre_e = numpy.array(pre_e)
+    pre_values = numpy.array(pre_values)
+    pre_coefs = numpy.zeros((len(pre_values),5))
+    M = (pre_values[1:]-pre_values[:-1])/(pre_e[1:]-pre_e[:-1])
+    pre_coefs[:-1,0] = M
+    pre_coefs[:-1,1] = pre_values[:-1]-M*pre_e[:-1]
+
+    post_e = numpy.array(post_e)
+    post_values = numpy.array(post_values)
+    post_coefs = numpy.zeros((len(post_values),5))
+    M = (post_values[1:]-post_values[:-1])/(post_e[1:]-post_e[:-1])
+    post_coefs[:-1,0] = M
+    post_coefs[:-1,1] = post_values[:-1]-M*post_e[:-1]
+    Full_Coeffs = numpy.vstack((pre_coefs,NearEdge_Coeffs,post_coefs))
+    #splice_points = [asf_merge_ind[0]+1, asf_merge_ind[0]+len(scaled_NearEdge_Data[:,0])]
+    return Full_E, Full_Coeffs, plot_scaled_NearEdge_Data
     
     
 def coeffs_to_linear(E, coeffs, threshold):
