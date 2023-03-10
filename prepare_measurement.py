@@ -244,9 +244,9 @@ for folder in all_folders:
                     l = line
                     if any(x in line for x in things_to_look_for) and line[0] != '§':
                         for temp in template:
-                            for x in things_to_look_for:
-                                if x in temp:
-                                    l = temp
+                            if " ".join(temp.split()[:2]) in line:
+                                l = temp
+                                break
                     o.write(l)
             o.flush()
             o.close()
@@ -261,6 +261,7 @@ for folder in all_folders:
             macro.write("""XX PROFFIT FILE "%s"\n"""%os.path.splitext(proffitpars)[0])
             macro.write("""XX SAVEUB "%s"\n"""%all_cells)
             macro.flush()
+            break
 
 macro.flush()
 macro.close()
