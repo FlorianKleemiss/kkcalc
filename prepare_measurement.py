@@ -27,6 +27,9 @@ def get_folders_with_par_file(path):
 file_path = filedialog.askopenfilename(defaultextension=".par",
                                        filetypes=([("Crysalis Parameter File", ".par")]),
                                        title="Please select template .par file")
+binary_file = filedialog.askopenfilename(defaultextension=".proffitpars",
+                                       filetypes=([("Crysalis Proffit-Parameter File", ".proffitpars")]),
+                                       title="Please select Proffitpars file")
 work_folder = filedialog.askdirectory(title="Please select folder to look for measurements to prepare")
 
 all_folders = get_folders_with_par_file(work_folder)

@@ -257,39 +257,39 @@ if __name__ == '__main__':
     
 
     #HL14
-    #Es = [17100,17150,17160,17166,17180,17200,17220,17300]
-    #fps = [-13.6595,-16.2754,-17.5141,-19.1306,-16.6550,-12.8490,-13.8983,-11.7568]
-    #fdps = [6.6971, 5.7636, 6.0041, 6.5918, 17.0275, 11.0402, 11.5513, 11.0343]
-    #Stoichiometry = data.ParseChemicalFormula('U')
-    #spec_test = specclass.Spec("specs/HL14-NaUF5-manual.spec")
-    #pylab.set_title("HL14 NaUF5")
+    Es = [17100,17150,17160,17166,17180,17200,17220,17300]
+    fps = [-13.6595,-16.2754,-17.5141,-19.1306,-16.6550,-12.8490,-13.8983,-11.7568]
+    fdps = [6.6971, 5.7636, 6.0041, 6.5918, 17.0275, 11.0402, 11.5513, 11.0343]
+    Stoichiometry = data.ParseChemicalFormula('U')
+    spec_test = specclass.Spec("specs/HL14-NaUF5-manual.spec")
+    pylab.set_title("HL14 NaUF5")
 
     #HL17
-    temp = numpy.array([[17000, -10.9052, 4.7638],
-    [17150, -14.9665, 4.4791 ],
-    [17176, -19.1501, 8.1872 ],
-    [17184, -15.7981, 12.4364],
-    [17200, -11.6748, 10.3490],
-    [17210, -12.6413, 9.4839 ],
-    [17250, -11.5393, 9.7332 ]]).T
-    Es = temp[0].tolist()
-    fps = temp[1].tolist()
-    fdps =  temp[2].tolist()
-    #
-    ##resolution limit 0.57
-    ##temp_low_res = numpy.array([[17000, -10.8578, 5.1398 ],
-    ##[17150, -14.9456, 3.9882 ],
-    ##[17176, -19.5159, 8.3557 ], 
-    ##[17184, -16.2605, 12.4530],
-    ##[17200, -12.0690, 10.4034],
-    ##[17210, -12.6650, 9.6555 ],
-    ##[17250, -11.8404, 9.8187 ]]).T
-    ##Es_low_res = temp_low_res[0].tolist()
-    ##fps_low_res = temp_low_res[1].tolist()
-    ##fdps_low_res =  temp_low_res[2].tolist()
-    Stoichiometry = data.ParseChemicalFormula('U')
-    spec_test = specclass.Spec("specs/HL1-Cs2UO2TiO4-manual.spec")
-    pylab.set_title("HL17 Cs2UO2TiO4")
+    #temp = numpy.array([[17000, -10.9052, 4.7638],
+    #[17150, -14.9665, 4.4791 ],
+    #[17176, -19.1501, 8.1872 ],
+    #[17184, -15.7981, 12.4364],
+    #[17200, -11.6748, 10.3490],
+    #[17210, -12.6413, 9.4839 ],
+    #[17250, -11.5393, 9.7332 ]]).T
+    #Es = temp[0].tolist()
+    #fps = temp[1].tolist()
+    #fdps =  temp[2].tolist()
+    ##
+    ###resolution limit 0.57
+    ###temp_low_res = numpy.array([[17000, -10.8578, 5.1398 ],
+    ###[17150, -14.9456, 3.9882 ],
+    ###[17176, -19.5159, 8.3557 ], 
+    ###[17184, -16.2605, 12.4530],
+    ###[17200, -12.0690, 10.4034],
+    ###[17210, -12.6650, 9.6555 ],
+    ###[17250, -11.8404, 9.8187 ]]).T
+    ###Es_low_res = temp_low_res[0].tolist()
+    ###fps_low_res = temp_low_res[1].tolist()
+    ###fdps_low_res =  temp_low_res[2].tolist()
+    #Stoichiometry = data.ParseChemicalFormula('U')
+    #spec_test = specclass.Spec("specs/HL1-Cs2UO2TiO4-manual.spec")
+    #pylab.set_title("HL17 Cs2UO2TiO4")
 
     #Stoichiometry = data.ParseChemicalFormula('GaAs')
     Relativistic_Correction = calc_relativistic_correction(Stoichiometry)
@@ -309,7 +309,7 @@ if __name__ == '__main__':
     #ASF_Data2 = data.coeffs_to_ASF(ASF_E2, numpy.vstack((ASF_Data1,ASF_Data1[-1])))
     #Re_data = KK_PP(ASF_E2, ASF_E2, ASF_Data1, Relativistic_Correction)
 
-    # Get splice points
+    # Get spec points
     spec_test.evaluate()
     raw_speccy = spec_test.output_E_a_array(a="sca")
     splice_eV = numpy.array([raw_speccy[0,0], raw_speccy[-1,0]])  # data limits
@@ -336,27 +336,46 @@ if __name__ == '__main__':
     #KK_Real_brennan = KK_PP(Full_E2, Full_E2, Full_Coefs_br, Relativistic_Correction)
     #null = 0
 
-    residual = lambda par, spectrum, fdp: ((spectrum*par[0]+par[1]) - fdp)
+    def residual (par, spectrum, fdp):
+        return numpy.sum(numpy.square((spectrum*par[0]+par[1]) - fdp))
+    def jac(par,spectrum,fdp):
+        return [sum(2*spectrum*spectrum*par[0]+2*spectrum*par[1]-2*spectrum*fdp),sum(2*spectrum*par[1]+2*par[1]-2*fdp)]
     
     import scipy
-    x0 = numpy.array([1.0,0.0])
+    x0 = numpy.array([4.0,3.0])
     i_start = 0
+    dist = 2E20
     for i,e in enumerate(NearEdgeData[:,0]):
-        if e >= min(Es):
-            i_start = i-1
+        dist_new = abs(e-min(Es))
+        if dist_new < dist:
+            dist = dist_new
+        else:
+            if i > 0:
+                i_start = i -1
+            else:
+                i_start = 0
             break
-    i_end = 0
+    i_end = i_start
+    dist = 2E20
     for i,e in enumerate(NearEdgeData[i_start:,0]):
-        if e >= max(Es):
-            i_end = i+1
+        dist_new = abs(e-max(Es))
+        if dist_new < dist:
+            dist = dist_new
+        else:
+            if i+1 < len(NearEdgeData[i_start:,0]):
+                i_end = i+1
+            else:
+                i_end = i
             break
 
     spectrum_part = NearEdgeData[i_start:i_end,1]
     energies_part = NearEdgeData[i_start:i_end,0]
     spec_fdps = []
     spec_es = []
+    ref_fdps = fdps.copy()
     for E in Es:
         dist = 2E20
+        found = False
         for i,e in enumerate(energies_part):
             dist_new = abs(e-E)
             if dist_new < dist:
@@ -364,15 +383,24 @@ if __name__ == '__main__':
             else:
                 spec_fdps.append(spectrum_part[i])
                 spec_es.append(energies_part[i])
+                found = True
                 break
+        if found == False:
+            ref_fdps.pop(Es.index(E))
     spec_fdps = numpy.array(spec_fdps)
-    p = scipy.optimize.least_squares(residual, x0, args=(spec_fdps, numpy.array(fdps)),verbose=1,gtol=1E-10).x
+    results = scipy.optimize.minimize(residual, 
+                                      x0, args=(spec_fdps, numpy.array(ref_fdps)),
+                                      jac = jac,
+                                      bounds = [(0.0,3.0),(-100,100)],
+                                      options={'disp': True, 'gtol':1E-10, 'maxiter': 100})
+    p = results.x
     figgy = plt.figure()
     axy = figgy.add_subplot(1,1,1)
-    axy.scatter(spec_fdps,fdps)
+    axy.scatter(spec_fdps,ref_fdps)
     x = numpy.linspace(min(fdps)-2,max(fdps)+1,200)
     axy.plot(x, x*p[0]+p[1])
-    plt.show()
+    axy.plot(x, x)
+    #plt.show()
     
     print("Calculating brennan & Cowan values",end="  ",flush=True)
     br_e = numpy.linspace(NearEdgeData[0,0],NearEdgeData[-1,0],2000)
@@ -399,6 +427,7 @@ if __name__ == '__main__':
 
 
     pylab.plot(NearEdgeData[:,0],NearEdgeData[:,1],'+c')
+    pylab.plot(NearEdgeData[:,0],NearEdgeData[:,1]*p[0]+p[1],'+k')
     pylab.plot(Full_E,KK_Real_Spectrum,'--g')
     
     pylab.plot(Es,fps,'ok')
@@ -410,7 +439,18 @@ if __name__ == '__main__':
     #pylab.plot(ASF_Data3[0],ASF_Data3[1],'r-')
     #pylab.xscale('log')
     pylab.set_xlim(raw_speccy[0,0], raw_speccy[-1,0])
-    pylab.set_ylim(-50,50)
+    ys = numpy.concatenate((NearEdgeData[:,1],KK_Real_Spectrum[numpy.argmax(Full_E>raw_speccy[0,0]):],fdps,fps))
+    y_min = numpy.min(ys)
+    if y_min < 0:
+        y_min *= 1.1
+    else:
+        y_min *= 0.9
+    y_max = numpy.max(ys)
+    if y_max < 0:
+        y_max *= 0.9
+    else:
+        y_max *= 1.1
+    pylab.set_ylim(y_min,y_max)
     pylab.set_xlabel("energy / eV")
     pylab.set_ylabel("scattering factor /e")
     plt.show()
