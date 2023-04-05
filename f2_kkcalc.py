@@ -10,16 +10,10 @@
 
 """This module implements the Kramers-Kronig transformation."""
 
-#import logging, sys
-#logger = logging.getLogger(__name__)
-#if __name__ == '__main__':
-    #logging.basicConfig(level=logging.DEBUG)
-    #logging.StreamHandler(stream=sys.stdout)
-
 import math
 import numpy
-#import os
-from kkcalc import data
+import scipy
+import os
 import specclass
 import brennan
 
@@ -43,7 +37,6 @@ def calc_relativistic_correction(stoichiometry):
         #correction += (z - (z/82.5)**2.37) * n
         correction += (0 - (z/82.5)**2.37) * n
     return correction
-
 
 def KK_General_PP(Eval_Energy, Energy, imaginary_spectrum, orders, relativistic_correction):
     """Calculate Kramers-Kronig transform with "Piecewise Polynomial"
@@ -149,199 +142,140 @@ def KK_PP(Eval_Energy, Energy, imaginary_spectrum, relativistic_correction):
     print("Done!")
     return KK_Re
 
-def improve_accuracy(Full_E, Real_Spectrum, Imaginary_Spectrum, relativistic_correction, tolerance, recursion=50):
-    """Calculate extra data points so that a linear interpolation is more accurate.
-    
-    Parameters
-    ----------
-    Full_E : numpy vector of `float`
-        Set of photon energies describing intervals for which each row of `imaginary_spectrum` is valid
-    Real_Spectrum : numpy vector of `float`
-        The real part of the spectrum corresponding to magnitudes at photon energies in Full_E
-    Imaginary_Spectrum : two-dimensional `numpy.array` of `float`
-        The array consists of five columns of polynomial coefficients: A_1, A_0, A_-1, A_-2, A_-3
-    relativistic_correction : float
-        The relativistic correction to the Kramers-Kronig transform.
-        (You can calculate the value using the `calc_relativistic_correction` function.)
-    tolerance : float
-        Level of error in linear extrapolation of data values to be allowed.
-    recursion : integer
-        Number of times an energy interval can be halved before giving up.
+def inter(Es, fdps,x):
+    for i,e in enumerate(Es):
+        if e >= x:
+            if e == x :
+                return fdps[i]
+            if i == 0:
+                return fdps[i]
+            elif i == len(Es)-1:
+                return fdps[-1]
+            d = Es[i] - Es[i-1]
+            p = Es[i] - x
+            return fdps[i-1] + (fdps[i]-fdps[i-1])*(p/d)
+    exit(-1) #This should never happen
 
-    Returns
-    -------
-    This function returns a numpy array with three columns respectively representing photon energy, the real spectrum and the imaginary spectrum.
-    """
-    print("Improve data accuracy")
-    new_points = numpy.cumsum(numpy.ones((len(Full_E)-2,1),dtype=numpy.int8))+1
-    Im_values = data.coeffs_to_ASF(Full_E, numpy.vstack((Imaginary_Spectrum,Imaginary_Spectrum[-1])))
-    #plot_Im_values = Im_values
-    Re_values = Real_Spectrum
-    E_values = Full_E
-    temp_Im_spectrum = Imaginary_Spectrum[1:]
-    count = 0
-    improved = 1
-    total_improved_points = 0
-    while count<recursion and numpy.sum(improved)>0:
-        #get E_midpoints
-        midpoints = (E_values[new_points-1]+E_values[new_points])/2.
-        #evaluate at new points
-        Im_midpoints = data.coeffs_to_ASF(midpoints, temp_Im_spectrum)
-        Re_midpoints = KK_PP(midpoints, Full_E, Imaginary_Spectrum, relativistic_correction)
-        #evaluate error levels
-        Im_error = abs((Im_values[new_points-1]+Im_values[new_points])/2. - Im_midpoints)
-        Re_error = abs((Re_values[new_points-1]+Re_values[new_points])/2. - Re_midpoints)
-        improved = (Im_error>tolerance) | (Re_error>tolerance)
-        print(str(numpy.sum(improved))+" points (out of "+str(len(improved))+") can be improved in pass number "+str(count+1)+".")
-        total_improved_points += numpy.sum(improved)
-        #insert new points and values
-        Im_values = numpy.insert(Im_values,new_points[improved],Im_midpoints[improved])
-        Re_values = numpy.insert(Re_values,new_points[improved],Re_midpoints[improved])
-        E_values = numpy.insert(E_values,new_points[improved],midpoints[improved])
-        #prepare for next loop
-        temp_Im_spectrum =numpy.repeat(temp_Im_spectrum[improved],2,axis=0)
-        new_points = numpy.where(numpy.insert(numpy.zeros(Im_values.shape, dtype=numpy.bool),new_points[improved],True))[0]
-        new_points = numpy.vstack((new_points, new_points+1)).T.flatten()
-        count += 1
-
-    print("Improved data accuracy by inserting "+str(total_improved_points)+" extra points.")
-    return numpy.vstack((E_values,Re_values,Im_values)).T
-    
-def kk_calculate_real(NearEdgeDataFile, ChemicalFormula, load_options=None, input_data_type=None, merge_points=None, add_background=False, fix_distortions=False, curve_tolerance=None, curve_recursion=50):
-    """Do all data loading and processing and then calculate the kramers-Kronig transform.
-    Parameters
-    ----------
-    NearEdgeDataFile : string
-        Path to file containg near-edge data
-    ChemicalFormula : string
-        A standard chemical formula string consisting of element symbols, numbers and parentheses.
-    merge_points : list or tuple pair of `float` values, or None
-        The photon energy values (low, high) at which the near-edge and scattering factor data values
-        are set equal so as to ensure continuity of the merged data set.
-
-    Returns
-    -------
-    This function returns a numpy array with columns consisting of the photon energy, the real and the imaginary parts of the scattering factors.
-    """
-    Stoichiometry = data.ParseChemicalFormula(ChemicalFormula)
-    Relativistic_Correction = calc_relativistic_correction(Stoichiometry)
-    Full_E, Imaginary_Spectrum = data.calculate_asf(Stoichiometry)
-    if NearEdgeDataFile is not None:
-        NearEdge_Data = data.convert_data(data.load_data(NearEdgeDataFile, load_options),FromType=input_data_type,ToType='asf')
-        Full_E, Imaginary_Spectrum = data.merge_spectra(NearEdge_Data, Full_E, Imaginary_Spectrum, merge_points=merge_points, add_background=add_background, fix_distortions=fix_distortions)
-    Real_Spectrum = KK_PP(Full_E, Full_E, Imaginary_Spectrum, Relativistic_Correction)
-    if curve_tolerance is not None:
-        output_data = improve_accuracy(Full_E,Real_Spectrum,Imaginary_Spectrum, Relativistic_Correction, curve_tolerance, curve_recursion)
+def integrand(x,E,Z,min_E,max_E,fdps,Es,br):
+    if x < min_E or x > max_E:
+        f = br.at_energy(x/1000,Z)[1]
     else:
-        Imaginary_Spectrum_Values = data.coeffs_to_ASF(Full_E, numpy.vstack((Imaginary_Spectrum,Imaginary_Spectrum[-1])))
-        output_data = numpy.vstack((Full_E,Real_Spectrum,Imaginary_Spectrum_Values)).T
-    return output_data
+        f = inter(Es,fdps,x)
+    return x*f/(x*x-E*E)
 
-if __name__ == '__main__':
-    #use argparse here to get command line arguments
-    #process arguments and pass to a pythonic function
+def kk_int(E,epsilon, Z, max_E, min_E, fdps, Es, brennan):
+    before = scipy.integrate.quad(integrand, 0, E-epsilon, args=(E,Z,min_E,max_E,fdps,Es,brennan), points=E, limit=20000, epsabs=1E-50, epsrel=1E-10)
+    after = scipy.integrate.quad(integrand, E+epsilon, 2000*E, args=(E,Z,min_E,max_E,fdps,Es,brennan), points=E, limit=20000, epsabs=1E-50, epsrel=1E-10)
+    return (before[0]+after[0])
 
-    from matplotlib import pyplot as plt
-    fig = plt.figure()
-    pylab = fig.add_subplot(1,1,1)
+def KK_integrate(Es, fdps, Z, relativistic, brennan, epsilon=1E-10):
+    print("Calculating the Kramers Kronig Transform using integration of Brennan&Cowan values...",end=" ",flush=True)
+    fp = numpy.zeros_like(fdps)
+    min_E = min(Es)
+    max_E = max(Es)
+    import multiprocessing
+    from itertools import repeat
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
+        res = pool.starmap(kk_int, zip(Es, repeat(epsilon), repeat(Z), repeat(max_E), repeat(min_E), repeat(fdps), repeat(Es), repeat(brennan)))
+        for i,fprime in enumerate(res):
+            fp[i] = fprime
+    print("... Done!")
+    return relativistic - (2/math.pi*fp)
+
+#def improve_accuracy(Full_E, Real_Spectrum, Imaginary_Spectrum, relativistic_correction, tolerance, recursion=50):
+#    """Calculate extra data points so that a linear interpolation is more accurate.
+#    
+#    Parameters
+#    ----------
+#    Full_E : numpy vector of `float`
+#        Set of photon energies describing intervals for which each row of `imaginary_spectrum` is valid
+#    Real_Spectrum : numpy vector of `float`
+#        The real part of the spectrum corresponding to magnitudes at photon energies in Full_E
+#    Imaginary_Spectrum : two-dimensional `numpy.array` of `float`
+#        The array consists of five columns of polynomial coefficients: A_1, A_0, A_-1, A_-2, A_-3
+#    relativistic_correction : float
+#        The relativistic correction to the Kramers-Kronig transform.
+#        (You can calculate the value using the `calc_relativistic_correction` function.)
+#    tolerance : float
+#        Level of error in linear extrapolation of data values to be allowed.
+#    recursion : integer
+#        Number of times an energy interval can be halved before giving up.
+#
+#    Returns
+#    -------
+#    This function returns a numpy array with three columns respectively representing photon energy, the real spectrum and the imaginary spectrum.
+#    """
+#    print("Improve data accuracy")
+#    new_points = numpy.cumsum(numpy.ones((len(Full_E)-2,1),dtype=numpy.int8))+1
+#    Im_values = data.coeffs_to_ASF(Full_E, numpy.vstack((Imaginary_Spectrum,Imaginary_Spectrum[-1])))
+#    #plot_Im_values = Im_values
+#    Re_values = Real_Spectrum
+#    E_values = Full_E
+#    temp_Im_spectrum = Imaginary_Spectrum[1:]
+#    count = 0
+#    improved = 1
+#    total_improved_points = 0
+#    while count<recursion and numpy.sum(improved)>0:
+#        #get E_midpoints
+#        midpoints = (E_values[new_points-1]+E_values[new_points])/2.
+#        #evaluate at new points
+#        Im_midpoints = data.coeffs_to_ASF(midpoints, temp_Im_spectrum)
+#        Re_midpoints = KK_PP(midpoints, Full_E, Imaginary_Spectrum, relativistic_correction)
+#        #evaluate error levels
+#        Im_error = abs((Im_values[new_points-1]+Im_values[new_points])/2. - Im_midpoints)
+#        Re_error = abs((Re_values[new_points-1]+Re_values[new_points])/2. - Re_midpoints)
+#        improved = (Im_error>tolerance) | (Re_error>tolerance)
+#        print(str(numpy.sum(improved))+" points (out of "+str(len(improved))+") can be improved in pass number "+str(count+1)+".")
+#        total_improved_points += numpy.sum(improved)
+#        #insert new points and values
+#        Im_values = numpy.insert(Im_values,new_points[improved],Im_midpoints[improved])
+#        Re_values = numpy.insert(Re_values,new_points[improved],Re_midpoints[improved])
+#        E_values = numpy.insert(E_values,new_points[improved],midpoints[improved])
+#        #prepare for next loop
+#        temp_Im_spectrum =numpy.repeat(temp_Im_spectrum[improved],2,axis=0)
+#        new_points = numpy.where(numpy.insert(numpy.zeros(Im_values.shape, dtype=numpy.bool),new_points[improved],True))[0]
+#        new_points = numpy.vstack((new_points, new_points+1)).T.flatten()
+#        count += 1
+#
+#    print("Improved data accuracy by inserting "+str(total_improved_points)+" extra points.")
+#    return numpy.vstack((E_values,Re_values,Im_values)).T
     
-    #HL19
-    #Es = [17100,17150,17181,17203,17220,17250,17300]
-    #fps = numpy.array([-14.3032, -16.7177,-16.1259,-13.9231,-14.0630,-13.4530,-12.6767])
-    #fdps = numpy.array([6.8452, 6.4845, 17.2928, 10.0615, 11.8307, 11.1966, 11.8952])
-    ##fps *= 2.0
-    ##fdps *= 2.0
-    #Stoichiometry = data.ParseChemicalFormula('U')
-    #spec_test = specclass.Spec("specs/HL19-NaU2F9-manual.spec")
-    #pylab.set_title("HL19 NaU2F9")
-    
+#def kk_calculate_real(NearEdgeDataFile, ChemicalFormula, load_options=None, input_data_type=None, merge_points=None, add_background=False, fix_distortions=False, curve_tolerance=None, curve_recursion=50):
+#    """Do all data loading and processing and then calculate the kramers-Kronig transform.
+#    Parameters
+#    ----------
+#    NearEdgeDataFile : string
+#        Path to file containg near-edge data
+#    ChemicalFormula : string
+#        A standard chemical formula string consisting of element symbols, numbers and parentheses.
+#    merge_points : list or tuple pair of `float` values, or None
+#        The photon energy values (low, high) at which the near-edge and scattering factor data values
+#        are set equal so as to ensure continuity of the merged data set.
+#
+#    Returns
+#    -------
+#    This function returns a numpy array with columns consisting of the photon energy, the real and the imaginary parts of the scattering factors.
+#    """
+#    Stoichiometry = data.ParseChemicalFormula(ChemicalFormula)
+#    Relativistic_Correction = calc_relativistic_correction(Stoichiometry)
+#    Full_E, Imaginary_Spectrum = data.calculate_asf(Stoichiometry)
+#    if NearEdgeDataFile is not None:
+#        NearEdge_Data = data.convert_data(data.load_data(NearEdgeDataFile, load_options),FromType=input_data_type,ToType='asf')
+#        Full_E, Imaginary_Spectrum = data.merge_spectra(NearEdge_Data, Full_E, Imaginary_Spectrum, merge_points=merge_points, add_background=add_background, fix_distortions=fix_distortions)
+#    Real_Spectrum = KK_PP(Full_E, Full_E, Imaginary_Spectrum, Relativistic_Correction)
+#    if curve_tolerance is not None:
+#        output_data = improve_accuracy(Full_E,Real_Spectrum,Imaginary_Spectrum, Relativistic_Correction, curve_tolerance, curve_recursion)
+#    else:
+#        Imaginary_Spectrum_Values = data.coeffs_to_ASF(Full_E, numpy.vstack((Imaginary_Spectrum,Imaginary_Spectrum[-1])))
+#        output_data = numpy.vstack((Full_E,Real_Spectrum,Imaginary_Spectrum_Values)).T
+#    return output_data
 
-    #HL14
-    Es = [17100,17150,17160,17166,17180,17200,17220,17300]
-    fps = [-13.6595,-16.2754,-17.5141,-19.1306,-16.6550,-12.8490,-13.8983,-11.7568]
-    fdps = [6.6971, 5.7636, 6.0041, 6.5918, 17.0275, 11.0402, 11.5513, 11.0343]
-    Stoichiometry = data.ParseChemicalFormula('U')
-    spec_test = specclass.Spec("specs/HL14-NaUF5-manual.spec")
-    pylab.set_title("HL14 NaUF5")
-
-    #HL17
-    #temp = numpy.array([[17000, -10.9052, 4.7638],
-    #[17150, -14.9665, 4.4791 ],
-    #[17176, -19.1501, 8.1872 ],
-    #[17184, -15.7981, 12.4364],
-    #[17200, -11.6748, 10.3490],
-    #[17210, -12.6413, 9.4839 ],
-    #[17250, -11.5393, 9.7332 ]]).T
-    #Es = temp[0].tolist()
-    #fps = temp[1].tolist()
-    #fdps =  temp[2].tolist()
-    ##
-    ###resolution limit 0.57
-    ###temp_low_res = numpy.array([[17000, -10.8578, 5.1398 ],
-    ###[17150, -14.9456, 3.9882 ],
-    ###[17176, -19.5159, 8.3557 ], 
-    ###[17184, -16.2605, 12.4530],
-    ###[17200, -12.0690, 10.4034],
-    ###[17210, -12.6650, 9.6555 ],
-    ###[17250, -11.8404, 9.8187 ]]).T
-    ###Es_low_res = temp_low_res[0].tolist()
-    ###fps_low_res = temp_low_res[1].tolist()
-    ###fdps_low_res =  temp_low_res[2].tolist()
-    #Stoichiometry = data.ParseChemicalFormula('U')
-    #spec_test = specclass.Spec("specs/HL1-Cs2UO2TiO4-manual.spec")
-    #pylab.set_title("HL17 Cs2UO2TiO4")
-
-    #Stoichiometry = data.ParseChemicalFormula('GaAs')
-    Relativistic_Correction = calc_relativistic_correction(Stoichiometry)
-    ASF_E, ASF_Data = data.calculate_asf(Stoichiometry)
-    ASF_E2 = numpy.empty(0,dtype=float)
-    ASF_Data1 = numpy.zeros((0,5))
-    from collections import deque
-    temp = deque()
-    for i,e in enumerate(ASF_E):
-        if e<1000: continue
-        else: 
-            ASF_E2 = numpy.append(ASF_E2,e)
-            if (i < len(ASF_Data)):
-                temp.append(ASF_Data[i,:])
-    #ASF_Data1 = numpy.array(temp)
-    #ASF_Data3 = data.coeffs_to_linear(ASF_E2, ASF_Data1, 0.1)
-    #ASF_Data2 = data.coeffs_to_ASF(ASF_E2, numpy.vstack((ASF_Data1,ASF_Data1[-1])))
-    #Re_data = KK_PP(ASF_E2, ASF_E2, ASF_Data1, Relativistic_Correction)
-
-    # Get spec points
-    spec_test.evaluate()
-    raw_speccy = spec_test.output_E_a_array(a="sca")
-    splice_eV = numpy.array([raw_speccy[0,0], raw_speccy[-1,0]])  # data limits
-    Full_E, Imaginary_Spectrum, NearEdgeData, splice_ind, p1  = data.merge_spectra(raw_speccy, 
-                                                                               ASF_E, 
-                                                                               ASF_Data, 
-                                                                               add_background=True, #abused now for sclaing last and first 3 values
-                                                                               fix_distortions=True,
-                                                                               plotting_extras=True)
-    
-    print("Loading Brennan & Cowan Table",end="  ",flush=True)
-    br = brennan.brennan()
-    print("..done")
-    
-    Full_E2, Full_Coefs_br, NearEdgeData2 = data.merge_spectra_brennan(raw_speccy, 
-                                                                               ASF_E, 
-                                                                               br,
-                                                                               92,
-                                                                               add_background=True, #abused now for sclaing last and first 3 values
-                                                                               fix_distortions=True)
-    
-    KK_Real_Spectrum = KK_PP(Full_E, Full_E, Imaginary_Spectrum, Relativistic_Correction)
-
-    #KK_Real_brennan = KK_PP(Full_E2, Full_E2, Full_Coefs_br, Relativistic_Correction)
-    #null = 0
-
+def optimize_spec(NearEdgeData, fdps):
     def residual (par, spectrum, fdp):
         return numpy.sum(numpy.square((spectrum*par[0]+par[1]) - fdp))
     def jac(par,spectrum,fdp):
         return [sum(2*spectrum*spectrum*par[0]+2*spectrum*par[1]-2*spectrum*fdp),sum(2*spectrum*par[1]+2*par[1]-2*fdp)]
     
-    import scipy
     x0 = numpy.array([4.0,3.0])
     i_start = 0
     dist = 2E20
@@ -392,8 +326,141 @@ if __name__ == '__main__':
                                       x0, args=(spec_fdps, numpy.array(ref_fdps)),
                                       jac = jac,
                                       bounds = [(0.0,3.0),(-100,100)],
-                                      options={'disp': True, 'gtol':1E-10, 'maxiter': 100})
-    p = results.x
+                                      options = {'disp': True, 'gtol':1E-10, 'maxiter': 100})
+    return results.x, spec_fdps, ref_fdps
+
+if __name__ == '__main__':
+    #use argparse here to get command line arguments
+    #process arguments and pass to a pythonic function
+    from kkcalc import data
+
+    from matplotlib import pyplot as plt
+    fig = plt.figure()
+    fig.set_size_inches(7, 5)
+    pylab = fig.add_subplot(1,1,1)
+
+    spectrum = 4
+    if spectrum == 1:
+        ##NaUF5 - HL14_rt_Au5filt
+        ##energy, fp, fdp
+        temp = numpy.array([[17100, -13.54, 6.3],
+        [17150, -16.39, 5.9],
+        [17160, -17.64, 6.12],
+        [17166, -19.14, 6.65],
+        [17180, -16.68, 16.98],
+        [17200, -14.02, 10.61],
+        [17220, -13.96, 11.5],
+        [17300, -11.83, 11.05]]).T
+        Stoichiometry = data.ParseChemicalFormula('U')
+        spec_test = specclass.Spec("specs/HL14-NaUF5-manual.spec")
+        title = "HL14_NaUF5"
+        pylab.set_title(title)
+    elif spectrum == 2:
+        ##NaU2F9 - HL19_rt_Au10Al100filt
+        ##energy, fp, fdp
+        temp = numpy.array([[17100, -14.33, 6.9],
+        [17150, -16.71,6.6],
+        [17181, -16.3, 17.3],
+        [17203, -14.6, 10.7],
+        [17220, -14.1, 11.9],
+        [17250, -13.5, 11.4],
+        [17300, -12.8, 11.9]]).T
+        Stoichiometry = data.ParseChemicalFormula('U')
+        spec_test = specclass.Spec("specs/HL19-NaU2F9-manual.spec")
+        title = "HL19_NaU2F9"
+        pylab.set_title(title)
+    elif spectrum == 3:
+        ##Cs2O6.5TiU - HL17_rt
+        ##energy, fp, fdp
+        temp = numpy.array([[17000, -10.86, 5.14],
+        [17150, -15.29, 4.46],
+        [17176, -19.52, 8.36],
+        [17184, -16.24, 12.46],
+        [17200, -12.06, 10.40],
+        [17210, -12.66, 9.66],
+        [17250, -11.84, 9.81]]).T
+        Stoichiometry = data.ParseChemicalFormula('U')
+        spec_test = specclass.Spec("specs/HL1-Cs2UO2TiO4-manual.spec")
+        title = "HL17_Cs2UO2TiO4"
+        pylab.set_title(title)
+    elif spectrum == 4:
+        ##Cs2O8Ti2U - HL18_rt_Al400Al200filt
+        ##energy, atom, fp, fdp
+        temp_low_res = numpy.array([
+        [17000, -11.19, 7.21],
+        [17150, -15.11, 6.57],
+        [17176, -19.71, 8.53],
+        [17184, -16.88, 12.87],
+        [17200, -12.82, 11.63],
+        [17210, -12.77, 10.83],
+        [17250, -12.17, 10.96]]).T
+        temp = numpy.array([
+        [17000, -10.98, 6.08],
+        [17150, -14.86, 5.71],
+        [17176, -19.56, 8.96],
+        [17184, -16.40, 13.10],
+        [17200, -12.90, 11.27],
+        [17210, -12.70, 10.72],
+        [17250, -11.91, 10.66]]).T
+        Stoichiometry = data.ParseChemicalFormula('U')
+        #Es_low_res = temp_low_res[0].tolist()
+        #fps_low_res = temp_low_res[1].tolist()
+        #fdps_low_res =  temp_low_res[2].tolist()
+        spec_test = specclass.Spec("specs/HL5-Cs2UO2Ti2O6-manual.spec")
+        title = "HL18_Cs2UO2Ti2O6"
+        pylab.set_title(title)
+
+    Es = temp[0].tolist()
+    fps = temp[1].tolist()
+    fdps =  temp[2].tolist()
+
+    #Stoichiometry = data.ParseChemicalFormula('GaAs')
+    Relativistic_Correction = calc_relativistic_correction(Stoichiometry)
+    ASF_E, ASF_Data = data.calculate_asf(Stoichiometry)
+    ASF_E2 = numpy.empty(0,dtype=float)
+    ASF_Data1 = numpy.zeros((0,5))
+    from collections import deque
+    temp = deque()
+    for i,e in enumerate(ASF_E):
+        if e<1000: continue
+        else: 
+            ASF_E2 = numpy.append(ASF_E2,e)
+            if (i < len(ASF_Data)):
+                temp.append(ASF_Data[i,:])
+    #ASF_Data1 = numpy.array(temp)
+    #ASF_Data3 = data.coeffs_to_linear(ASF_E2, ASF_Data1, 0.1)
+    #ASF_Data2 = data.coeffs_to_ASF(ASF_E2, numpy.vstack((ASF_Data1,ASF_Data1[-1])))
+    #Re_data = KK_PP(ASF_E2, ASF_E2, ASF_Data1, Relativistic_Correction)
+
+    # Get spec points
+    spec_test.evaluate()
+    raw_speccy = spec_test.output_E_a_array(a="sca")
+    splice_eV = numpy.array([raw_speccy[0,0], raw_speccy[-1,0]])  # data limits
+    Full_E, Imaginary_Spectrum, NearEdgeData, splice_ind, p1  = data.merge_spectra(raw_speccy, 
+                                                                                   ASF_E, 
+                                                                                   ASF_Data, 
+                                                                                   add_background=False, #abused now for sclaing last and first 3 values
+                                                                                   fix_distortions=True,
+                                                                                   plotting_extras=True)
+    
+    print("Loading Brennan & Cowan Table",end="  ",flush=True)
+    br = brennan.brennan()
+    print("..done")
+    
+    Full_E2, Full_Coefs_br, NearEdgeData2 = data.merge_spectra_brennan(raw_speccy, 
+                                                                       ASF_E,
+                                                                       ASF_Data,
+                                                                       br,
+                                                                       92,
+                                                                       add_background=False, #abused now for sclaing last and first 3 values
+                                                                       fix_distortions=True)
+    
+    KK_Real_Spectrum = KK_PP(Full_E, Full_E, Imaginary_Spectrum, Relativistic_Correction)
+
+    #KK_Real_brennan = KK_integrate(raw_speccy[:,0], raw_speccy[:,1], "U", Relativistic_Correction, br)
+    #null = 0
+
+    p, spec_fdps, ref_fdps = optimize_spec(NearEdgeData2, fdps)
     figgy = plt.figure()
     axy = figgy.add_subplot(1,1,1)
     axy.scatter(spec_fdps,ref_fdps)
@@ -403,7 +470,7 @@ if __name__ == '__main__':
     #plt.show()
     
     print("Calculating brennan & Cowan values",end="  ",flush=True)
-    br_e = numpy.linspace(NearEdgeData[0,0],NearEdgeData[-1,0],2000)
+    br_e = numpy.linspace(NearEdgeData2[0,0],NearEdgeData2[-1,0],2000)
     br_fp = numpy.zeros_like(br_e)
     br_fdp = numpy.zeros_like(br_e)
     for i,e in enumerate(br_e):
@@ -424,11 +491,12 @@ if __name__ == '__main__':
     #       ((NearEdgeData[-1,1]-p1*NearEdgeData[-1,0])-(NearEdgeData[0,1]-p1*NearEdgeData[0,0]))
     #pylab.plot(NearEdgeData[:,0],corr,"--k")
 
-
-
-    pylab.plot(NearEdgeData[:,0],NearEdgeData[:,1],'+c')
-    pylab.plot(NearEdgeData[:,0],NearEdgeData[:,1]*p[0]+p[1],'+k')
+    pylab.plot(NearEdgeData2[:,0],NearEdgeData2[:,1],'+c')
+    pylab.plot(NearEdgeData2[:,0],NearEdgeData2[:,1]*p[0]+p[1],'+k')
     pylab.plot(Full_E,KK_Real_Spectrum,'--g')
+
+    #pylab.plot(NearEdgeData2[:,0], NearEdgeData[:,1],'+m')
+    #pylab.plot(Full_E2,KK_Real_brennan,'--g')
     
     pylab.plot(Es,fps,'ok')
     pylab.plot(Es,fdps,'om')
@@ -439,7 +507,7 @@ if __name__ == '__main__':
     #pylab.plot(ASF_Data3[0],ASF_Data3[1],'r-')
     #pylab.xscale('log')
     pylab.set_xlim(raw_speccy[0,0], raw_speccy[-1,0])
-    ys = numpy.concatenate((NearEdgeData[:,1],KK_Real_Spectrum[numpy.argmax(Full_E>raw_speccy[0,0]):],fdps,fps))
+    ys = numpy.concatenate((NearEdgeData2[:,1],KK_Real_Spectrum[numpy.argmax(Full_E>raw_speccy[0,0]):],fdps,fps))
     y_min = numpy.min(ys)
     if y_min < 0:
         y_min *= 1.1
@@ -453,5 +521,6 @@ if __name__ == '__main__':
     pylab.set_ylim(y_min,y_max)
     pylab.set_xlabel("energy / eV")
     pylab.set_ylabel("scattering factor /e")
-    plt.show()
+    fig.savefig(os.path.join("specs",title+".png"),dpi=300,transparent=False,bbox_inches='tight')
+    #plt.show()
     

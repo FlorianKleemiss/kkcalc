@@ -474,7 +474,7 @@ def merge_spectra(NearEdge_Data, ASF_E, ASF_Data, merge_points=None, add_backgro
     else:
         return Full_E, Full_Coeffs
     
-def merge_spectra_brennan(NearEdge_Data, ASF_E, brennan, Z, add_background=False, fix_distortions=False):
+def merge_spectra_brennan(NearEdge_Data, ASF_E, ASF_Data, brennan, Z, add_background=False, fix_distortions=False):
     """Normalise the user-provided, near-edge data to the Brennan & Cowan scattering factor data and combine them.
     
     Parameters
@@ -520,7 +520,7 @@ def merge_spectra_brennan(NearEdge_Data, ASF_E, brennan, Z, add_background=False
         ASF_fitY = 0.0*NearEdge_Data[:, 0]
         for i, E in enumerate(NearEdge_Data[:,0]):
             ASF_fitY[i] = brennan.at_energy(E/1000,LIST_OF_ELEMENTS[Z-1])[1]
-            #((y-p1*x) - (y0-p1x0)) / ((yn-p*xn) - (y0-p*x0)) * (yn-y0) + y0 - target 
+            #((y-p1*x) - (y0-p1*x0)) / ((yn-p*xn) - (y0-p*x0)) * (yn-y0) + y0 - target 
         fitfunc = lambda p, x, y, asf_mv, asf: ((y-p*x)-(y[0]-p*x[0]))/((y[-1]-p*x[-1])-(y[0]-p*x[0]))*(asf_mv[1]-asf_mv[0])+asf_mv[0] - asf
         p0 = -(NearEdge_merge_values[1]-NearEdge_merge_values[0])/((asf_merge_values[1]-asf_merge_values[0])*NearEdge_Data[0,0])
         print("Fix distortions - start fit with p0 ="+str(p0))
